@@ -36,6 +36,7 @@ import (
 	"github.com/openebs/maya/pkg/version"
 
 	"github.com/spf13/cobra"
+	"github.com/openebs/maya/cmd/maya-apiserver/spc-watcher"
 )
 
 var (
@@ -126,8 +127,15 @@ func Run(cmd *cobra.Command, c *CmdStartOptions) error {
 	if mconfig == nil {
 		return errors.New("Unable to load the configuration.")
 	}
-
+	// starting spc watcher
+	// This thread will be responsible for watching storagepoolclaim objects
+	// It get notified on the occasion of a create,update or delete of storagepoolclaim objects and the events can be
+	// handled with business logic.
+	// TO-DO :- Handle spc watcher error
+	// Typically a failure of spc watcher should shut down maya api server
+	 go spc.Start()
 	//TODO Setup Log Level
+	glog.Infof("Not Blocked")
 
 	// Setup Maya server
 	if err := c.setupMayaServer(mconfig); err != nil {
@@ -236,8 +244,6 @@ func (c *CmdStartOptions) setupMayaServer(mconfig *config.MayaConfig) error {
 		glog.Errorf("Error starting maya api server: %s", err)
 		return err
 	}
-
-	c.maya = maya
 
 	// Setup the HTTP server
 	http, err := server.NewHTTPServer(maya, mconfig, os.Stdout)
