@@ -20,11 +20,11 @@ package k8s
 import (
 	"fmt"
 	"github.com/ghodss/yaml"
-
 	"github.com/openebs/maya/pkg/template"
 	api_apps_v1beta1 "k8s.io/api/apps/v1beta1"
 	api_core_v1 "k8s.io/api/core/v1"
 	api_extn_v1beta1 "k8s.io/api/extensions/v1beta1"
+	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 )
 
 // DeploymentYml provides utility methods to generate K8s Deployment objects
@@ -109,4 +109,39 @@ func (m *ServiceYml) AsCoreV1Service() (*api_core_v1.Service, error) {
 	}
 
 	return svc, nil
+}
+
+
+//CstorPoolYml provides utility methods to generate K8s CStorPool objects
+type CstorPoolYml struct {
+	// YmlInBytes represents a CstorPool in
+	// yaml format
+	YmlInBytes []byte
+}
+
+func NewCstorPoolYml(context, yml string, values map[string]interface{}) (*CstorPoolYml, error) {
+	b, err := template.AsTemplatedBytes(context, yml, values)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CstorPoolYml{
+		YmlInBytes: b,
+	}, nil
+}
+
+// AsCstorPoolYml returns a v1 CStorPool instance
+func (m *CstorPoolYml) AsCstorPoolYml() (*v1alpha1.CStorPool, error) {
+	if m.YmlInBytes == nil {
+		return nil, fmt.Errorf("Missing yaml")
+	}
+
+	// unmarshall the byte into CStorVolume object
+	cstorPool := &v1alpha1.CStorPool{}
+	err := yaml.Unmarshal(m.YmlInBytes, cstorPool)
+	if err != nil {
+		return nil, err
+	}
+
+	return cstorPool, nil
 }

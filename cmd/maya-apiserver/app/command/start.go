@@ -135,7 +135,6 @@ func Run(cmd *cobra.Command, c *CmdStartOptions) error {
 	// Typically a failure of spc watcher should shut down maya api server
 	 go spc.Start()
 	//TODO Setup Log Level
-	glog.Infof("Not Blocked")
 
 	// Setup Maya server
 	if err := c.setupMayaServer(mconfig); err != nil {

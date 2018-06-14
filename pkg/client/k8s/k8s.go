@@ -61,6 +61,10 @@ const (
 	StroagePoolCRKK K8sKind = "StoragePool"
 	// PersistentVolumeClaimKK is a K8s PersistentVolumeClaim Kind
 	PersistentVolumeClaimKK K8sKind = "PersistentVolumeClaim"
+	// CstorPoolCRKK is a custom K8s CStorPool Kind
+	CstorPoolCRKK K8sKind = "CStorPool"
+	// StoragePoolClaimKK is a custom K8s StoragePoolClaim Kind
+	StoragePoolClaimKK K8sKind = "StoragePoolClaim"
 )
 
 //
@@ -125,6 +129,15 @@ type K8sClient struct {
 	// NOTE: This property is useful to mock
 	// during unit testing
 	CASTemplate *api_oe_v1alpha1.CASTemplate
+	// CStorPool refers to a K8s CStorPool CRD object
+	// NOTE: This property is useful to mock
+	// during unit testing
+	CstorPool *api_oe_v1alpha1.CStorPool
+
+	// StoragePoolClaim refers to a K8s StoragePoolClaim CRD object
+	// NOTE: This property is useful to mock
+	// during unit testing
+	StoragePoolClaim *api_oe_v1alpha1.StoragePoolClaim
 
 	// various cert related to connecting to K8s API
 	caCert     string
@@ -187,7 +200,42 @@ func (k *K8sClient) GetOEV1alpha1SP(name string) (*api_oe_v1alpha1.StoragePool, 
 	spOps := k.oeV1alpha1SPOps()
 	return spOps.Get(name, mach_apis_meta_v1.GetOptions{})
 }
+// Start CSTOR
 
+// CreateOEV1alpha1CP creates a CstorPool
+func (k *K8sClient) CreateOEV1alpha1CP(cp *api_oe_v1alpha1.CStorPool) (*api_oe_v1alpha1.CStorPool, error) {
+	cvops := k.oeV1alpha1CPOps()
+	return cvops.Create(cp)
+}
+
+// oeV1alpha1CVOps is a utility function that provides a instance capable of
+// executing various OpenEBS CstorPool related operations
+func (k *K8sClient) oeV1alpha1CPOps() typed_oe_v1alpha1.CStorPoolInterface {
+	return k.oecs.OpenebsV1alpha1().CStorPools()
+}
+
+// GetOEV1alpha1CP fetches the OpenEBS CstorPool specs based on
+// the provided name
+func (k *K8sClient) GetOEV1alpha1CP(name string) (*api_oe_v1alpha1.CStorPool, error) {
+	if k.CstorPool != nil {
+		return k.CstorPool, nil
+	}
+
+	cpOps := k.oeV1alpha1CPOps()
+	return cpOps.Get(name, mach_apis_meta_v1.GetOptions{})
+}
+
+// CreateOEV1alpha1CVAsRaw creates a CstorVolume
+func (k *K8sClient) CreateOEV1alpha1CVAsRaw(v *api_oe_v1alpha1.CStorPool) (result []byte, err error) {
+	csv, err := k.CreateOEV1alpha1CP(v)
+	if err != nil {
+		return
+	}
+
+	return json.Marshal(csv)
+}
+
+//END CSTOR
 // oeV1alpha1CASTOps is a utility function that provides a instance capable of
 // executing various OpenEBS CASTemplate related operations
 func (k *K8sClient) oeV1alpha1CASTOps() typed_oe_v1alpha1.CASTemplateInterface {

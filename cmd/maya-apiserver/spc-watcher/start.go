@@ -43,10 +43,6 @@ func Start() {
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 	cfg, err := getClusterConfig(kubeconfig)
-	glog.Infof("After Get config")
-	if err != nil {
-		glog.Fatalf(err.Error())
-	}
 	if err != nil {
 		glog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}

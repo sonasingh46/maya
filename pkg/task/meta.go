@@ -228,7 +228,9 @@ func (m *metaTaskExecutor) isPutAppsV1B1Deploy() bool {
 func (m *metaTaskExecutor) isPatchAppsV1B1Deploy() bool {
 	return m.identifier.isAppsV1B1Deploy() && m.isPatch()
 }
-
+func (m *metaTaskExecutor) isPutOEV1alpha1CstorPool() bool {
+	return m.identifier.isOEV1alpha1CstorPool() && m.isPut()
+}
 func (m *metaTaskExecutor) isPutCoreV1Service() bool {
 	return m.identifier.isCoreV1Service() && m.isPut()
 }

@@ -36,10 +36,15 @@ type StoragePoolClaim struct {
 
 // StoragePoolClaimSpec is the spec for a StoragePoolClaimSpec resource
 type StoragePoolClaimSpec struct {
-	Name       string `json:"name"`
-	Format     string `json:"format"`
-	Mountpoint string `json:"mountpoint"`
-	Path       string `json:"path"`
+	Name         string `json:"name"`
+	Format       string `json:"format"`
+	Mountpoint	 string `json:"mountpoint"`
+	Path       	 string `json:"path"`
+	//Type       	 string `json:"type"`
+	//NodeSelector string `json:"nodeSelector"`
+	//Capacity     string `json:"capacity"`
+	//Disks DiskAttr `json:"disks"`
+	//PoolSpec CStorPoolAttr `json:"poolSpec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
