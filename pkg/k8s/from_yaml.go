@@ -140,6 +140,8 @@ func (m *CstorPoolYml) AsCstorPoolYml() (*v1alpha1.CStorPool, error) {
 	cstorPool := &v1alpha1.CStorPool{}
 	err := yaml.Unmarshal(m.YmlInBytes, cstorPool)
 	if err != nil {
+		fmt.Println("Breaked Here 1")
+		fmt.Println(err)
 		return nil, err
 	}
 

@@ -84,6 +84,7 @@ const (
 // VolumeTLPProperty is used to define properties that comes
 // after VolumeTLP
 type VolumeTLPProperty string
+type Disk string
 
 const (
 	// OwnerVTP indicates the owner of this volume; the one who
@@ -109,6 +110,7 @@ const (
 	//  The corresponding value will be accessed as
 	// {{ .Volume.pvc }}
 	PersistentVolumeClaimVTP VolumeTLPProperty = "pvc"
+	CstorPoolDisk Disk = "disks"
 )
 
 // PolicyTLPProperty is the name of the property that is found

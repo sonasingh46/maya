@@ -41,6 +41,7 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
+	"fmt"
 )
 
 // K8sKind represents the Kinds understood by Kubernetes
@@ -229,6 +230,9 @@ func (k *K8sClient) GetOEV1alpha1CP(name string) (*api_oe_v1alpha1.CStorPool, er
 func (k *K8sClient) CreateOEV1alpha1CVAsRaw(v *api_oe_v1alpha1.CStorPool) (result []byte, err error) {
 	csv, err := k.CreateOEV1alpha1CP(v)
 	if err != nil {
+		fmt.Println("ERROR IS 1")
+		fmt.Println(err)
+
 		return
 	}
 

@@ -18,14 +18,11 @@ package cstorpool
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
-
-
 	//"k8s.io/client-go/tools/clientcmd"
 	//"k8s.io/client-go/kubernetes"
-
-
-
+	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 )
 /*
 var (
@@ -37,38 +34,27 @@ func CreateCstorpool(spcGot *apis.StoragePoolClaim){
 	// Business logic for creation of cstor pool cr
 	// Launch as many go routines as the number of cstor pool crs need to be created.
 	// How to handle the cr creation failure?
-	//cfg, err := getClusterConfig(kubeconfig)
-	//if err != nil {
-		//glog.Fatalf("Error building kubeconfig: %s", err.Error())
-	//}
-	//clientset, err := kubernetes.NewForConfig(cfg)
-	//if err != nil {
-	//	glog.Fatalf("Error in creating clientset: %s",err)
+	fmt.Println("Creating cstorpool cr for spc %s via CASTemplate",spcGot.ObjectMeta.Name)
+	// Wether business logic will add some information other then extracted from spc for cstropool cr creation?
+	cstorPool:= &v1alpha1.CStorPool{}
+	cstorPool.Spec.PoolSpec.PoolName= "Pool1"
+	cstorPool.Namespace= "default"
+	// Fetch castemplate from spc object
+	castName := spcGot.Annotations[string(v1alpha1.CASTemplateCVK)]
+	fmt.Println("Cast Name Fetched:")
+	fmt.Println(castName)
 
-	//}
-	//cstorPoolClientset
-	//cstorPool := &v1alpha1.CStorPool{}
-	//cstorPool.Spec.PoolSpec.PoolName= "Pool1"
-
-
-	fmt.Println("Creating cstor pool cr "+spcGot.ObjectMeta.Name)
-
-}
-/*
-// GetClusterConfig return the config for k8s.
-func getClusterConfig(kubeconfig string) (*rest.Config, error) {
-	var masterURL string
-	cfg, err := rest.InClusterConfig()
+	cstorOps, err := NewCstorPoolOperation(cstorPool)
 	if err != nil {
-		glog.Errorf("Failed to get k8s Incluster config. %+v", err)
-		if kubeconfig == "" {
-			return nil, fmt.Errorf("kubeconfig is empty: %v", err.Error())
-		}
-		cfg, err = clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-		if err != nil {
-			return nil, fmt.Errorf("Error building kubeconfig: %s", err.Error())
-		}
+		fmt.Println("NewCstorPoolOPeration Failed with following error")
+		fmt.Println(err)
 	}
-	return cfg, err
+	cstorPoolObject, err := cstorOps.Create()
+	if err != nil {
+		glog.Errorf("failed to create cas template based cstorpool: error '%s'", err.Error())
+		//return nil, CodedError(500, err.Error())
+	}else {
+		glog.Infof("cas template based cstorpool created successfully: name '%s'", cstorPoolObject.Name)
+	}
+
 }
-*/

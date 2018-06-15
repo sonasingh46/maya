@@ -433,8 +433,9 @@ func (m *taskExecutor) asExtnV1B1Deploy() (*api_extn_v1beta1.Deployment, error) 
 // asCstorPool generates a CstorPool object
 // out of the embedded yaml
 func (m *taskExecutor) asCstorPool() (*v1alpha1.CStorPool, error) {
-	d, err := m_k8s.NewCstorPoolYml("CstorPool", m.task.yml, m.task.values)
+	d, err := m_k8s.NewCstorPoolYml("CStorPool", m.task.yml, m.task.values)
 	if err != nil {
+
 		return nil, err
 	}
 	return d.AsCstorPoolYml()
@@ -552,17 +553,23 @@ func (m *taskExecutor) deleteExtnV1B1Deployment() (err error) {
 
 // putCstorPool will put a CstorPool as defined in the task
 func (m *taskExecutor) putCstorPool() (map[string]interface{}, error) {
+
 	d, err := m.asCstorPool()
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("D object change")
+	// debugtag
+	// This creates the bug
 	cstorPool, err := m.k8sClient.CreateOEV1alpha1CVAsRaw(d)
 	if err != nil {
+		fmt.Println("ERROR IS")
+		fmt.Println(err)
 		return nil, err
 	}
 
 	e := newQueryExecFormatter(m.identity, m.taskResultQueries, cstorPool)
+
 	return e.formattedResult()
 }
 
