@@ -47,7 +47,10 @@ func (c *Controller) spcEventHandler(operation string, spcGot *apis.StoragePoolC
 		// Query for this spc object
 		glog.Info("Create SPC Event Handler")
 		// Pass spc object from here to the function
-		cstorpool.CreateCstorpool(spcGot)
+		err := cstorpool.CreateCstorpool(spcGot)
+		if err !=nil{
+			fmt.Println("Could Not Create cstor pool")
+		}
 		break
 
 	case "update":

@@ -40,11 +40,12 @@ type StoragePoolClaimSpec struct {
 	Format       string `json:"format"`
 	Mountpoint	 string `json:"mountpoint"`
 	Path       	 string `json:"path"`
-	//Type       	 string `json:"type"`
-	//NodeSelector string `json:"nodeSelector"`
-	//Capacity     string `json:"capacity"`
-	//Disks DiskAttr `json:"disks"`
-	//PoolSpec CStorPoolAttr `json:"poolSpec"`
+	Type       	 string `json:"type"`
+	NodeSelector []string `json:"nodeSelector"`
+	Capacity     string `json:"capacity"`
+	MaxPools     string `json:"maxPools"`
+	Disks DiskAttr `json:"disks"`
+	PoolSpec CStorPoolAttr `json:"poolSpec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

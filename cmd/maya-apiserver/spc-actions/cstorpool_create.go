@@ -23,17 +23,37 @@ import (
 	//"k8s.io/client-go/tools/clientcmd"
 	//"k8s.io/client-go/kubernetes"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	"strconv"
 )
-/*
-var (
-	masterURL  string
-	kubeconfig string
-)
-*/
-func CreateCstorpool(spcGot *apis.StoragePoolClaim){
+
+func CreateCstorpool(spcGot *apis.StoragePoolClaim)(error){
 	// Business logic for creation of cstor pool cr
 	// Launch as many go routines as the number of cstor pool crs need to be created.
 	// How to handle the cr creation failure?
+
+	// Fetch, how many cstor pool should be created
+	maxPool := spcGot.Spec.MaxPools
+	// Convert maxPool which is a string type to integer type
+	maxPoolCount, err := strconv.Atoi(maxPool)
+	if err!=nil{
+		fmt.Println("conversion of max pool count failed : " ,err)
+		return err
+	}
+	// Handle max pool count invalid inputs
+	if maxPoolCount <= 0 {
+		fmt.Println("aborting cstor pool create operation as pool count is not greater then ",maxPoolCount)
+		return fmt.Errorf("error")
+	}
+	cstorPoolCreator(spcGot)
+	// Launch as many cstorPoolCreator go routines as maxPoolCount so as to start parallel creation of cstor pool CR
+	//for poolCount:=0; poolCount<maxPoolCount; poolCount++{
+	//	go cstorPoolCreator(spcGot)
+	//}
+	return nil
+}
+// function that creates a cstorpool CR
+func cstorPoolCreator(spcGot *apis.StoragePoolClaim){
+	fmt.Println("Creation of cstor pool CR initiated")
 	fmt.Println("Creating cstorpool cr for spc %s via CASTemplate",spcGot.ObjectMeta.Name)
 	// Wether business logic will add some information other then extracted from spc for cstropool cr creation?
 	cstorPool:= &v1alpha1.CStorPool{}
@@ -56,5 +76,4 @@ func CreateCstorpool(spcGot *apis.StoragePoolClaim){
 	}else {
 		glog.Infof("cas template based cstorpool created successfully: name '%s'", cstorPoolObject.Name)
 	}
-
 }
