@@ -78,7 +78,6 @@ func (v *volumeAPIOpsV1alpha1) create() (*v1alpha1.CASVolume, error) {
 	if err != nil {
 		return nil, CodedError(400, err.Error())
 	}
-
 	// volume name is expected
 	if len(vol.Name) == 0 {
 		return nil, CodedError(400, fmt.Sprintf("failed to create volume: missing volume name '%v'", vol))

@@ -79,11 +79,23 @@ const (
 	// {{- .ListItems.volumes.openebs.mypv.ip -}}
 	// {{- .ListItems.volumes.openebs.mypv.status -}}
 	ListItemsTLP TopLevelProperty = "ListItems"
+	// VolumeTLP is a top level property supported by volume
+	// policy engine
+	//
+	// The properties provided by the caller are placed
+	// with VolumeTLP as the top level property
+	//
+	// NOTE:
+	//  Policy engine cannot modify these properties.
+	// These are the runtime properties that are provided
+	// as inputs to policy engine
+	CstorPoolTLP TopLevelProperty = "CstorPool"
 )
 
 // VolumeTLPProperty is used to define properties that comes
 // after VolumeTLP
 type VolumeTLPProperty string
+type CstorPoolTLPProperty string
 type Disk string
 
 const (
@@ -110,7 +122,30 @@ const (
 	//  The corresponding value will be accessed as
 	// {{ .Volume.pvc }}
 	PersistentVolumeClaimVTP VolumeTLPProperty = "pvc"
-	CstorPoolDisk Disk = "disks"
+	// CstorPoolOwnerCTP indicates the owner of this volume; the one who
+	// is executing this policy
+	//
+	// NOTE:
+	//  The corresponding value will be accessed as
+	// {{ .CstorPool.owner }}
+	CstorPoolOwnerCTP CstorPoolTLPProperty = "owner"
+	// StoragePoolClaimCTP is the SPC of the cstor pool
+	// NOTE:
+	//  The corresponding value will be accessed as
+	// {{ .CstorPool.spc }}
+	StoragePoolClaimCTP CstorPoolTLPProperty = "spc"
+	// CstorPoolHostNameCTP indicates the host node of this cstor pool cr;
+	//
+	// NOTE:
+	//  The corresponding value will be accessed as
+	// {{ .CstorPool.hostName }}
+	CstorPoolHostNameCTP CstorPoolTLPProperty = "hostName"
+	// CstorPoolTypeCTP indicates the type of this cstor pool cr;
+	//
+	// NOTE:
+	//  The corresponding value will be accessed as
+	// {{ .CstorPool.poolType }}
+	CstorPoolTypeCTP CstorPoolTLPProperty = "poolType"
 )
 
 // PolicyTLPProperty is the name of the property that is found

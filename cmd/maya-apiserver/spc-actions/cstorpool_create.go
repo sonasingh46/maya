@@ -26,43 +26,66 @@ import (
 	"strconv"
 )
 
-func CreateCstorpool(spcGot *apis.StoragePoolClaim)(error){
+func CreateCstorpool(spcGot *apis.StoragePoolClaim) (error) {
 	// Business logic for creation of cstor pool cr
 	// Launch as many go routines as the number of cstor pool crs need to be created.
 	// How to handle the cr creation failure?
 
-	// Fetch, how many cstor pool should be created
+	// Fetch the number of cstor pools that should be created
 	maxPool := spcGot.Spec.MaxPools
 	// Convert maxPool which is a string type to integer type
 	maxPoolCount, err := strconv.Atoi(maxPool)
-	if err!=nil{
-		fmt.Println("conversion of max pool count failed : " ,err)
+	if err != nil {
+		fmt.Println("conversion of max pool count failed : ", err)
 		return err
 	}
 	// Handle max pool count invalid inputs
 	if maxPoolCount <= 0 {
-		fmt.Println("aborting cstor pool create operation as pool count is not greater then ",maxPoolCount)
+		fmt.Println("aborting cstor pool create operation as pool count is not greater then ", maxPoolCount)
 		return fmt.Errorf("error")
 	}
-	cstorPoolCreator(spcGot)
+	//cstorPoolCreator(spcGot)
 	// Launch as many cstorPoolCreator go routines as maxPoolCount so as to start parallel creation of cstor pool CR
-	//for poolCount:=0; poolCount<maxPoolCount; poolCount++{
-	//	go cstorPoolCreator(spcGot)
-	//}
+	for poolCount := 0; poolCount < maxPoolCount; poolCount++ {
+		go cstorPoolCreator(spcGot, poolCount)
+	}
 	return nil
 }
+
 // function that creates a cstorpool CR
-func cstorPoolCreator(spcGot *apis.StoragePoolClaim){
+func cstorPoolCreator(spcGot *apis.StoragePoolClaim, nodeIndex int) {
 	fmt.Println("Creation of cstor pool CR initiated")
-	fmt.Println("Creating cstorpool cr for spc %s via CASTemplate",spcGot.ObjectMeta.Name)
+	fmt.Println("Creating cstorpool cr for spc %s via CASTemplate", spcGot.ObjectMeta.Name)
 	// Wether business logic will add some information other then extracted from spc for cstropool cr creation?
-	cstorPool:= &v1alpha1.CStorPool{}
-	cstorPool.Spec.PoolSpec.PoolName= "Pool1"
-	cstorPool.Namespace= "default"
-	// Fetch castemplate from spc object
+	// Create an empty cstor pool object
+	cstorPool := &v1alpha1.CStorPool{}
+
+	//Generate name using the prefix of StoragePoolClaim name and nodename hash
+	cstorPool.ObjectMeta.Name = spcGot.Name + "-" + spcGot.Spec.NodeSelector[nodeIndex]
+
+	// Add Pooltype specification
+	cstorPool.Spec.PoolSpec.PoolType = spcGot.Spec.PoolSpec.PoolType
+
+	// Fetch castemplate from spc object( we need not fetch it)
 	castName := spcGot.Annotations[string(v1alpha1.CASTemplateCVK)]
-	fmt.Println("Cast Name Fetched:")
-	fmt.Println(castName)
+	// make a map that should contain the castemplate name
+	mapCastName := make(map[string]string)
+	// Fill the map with castemplate name
+	mapCastName[string(v1alpha1.CASTemplateCVK)] = castName
+	// Push the map to cstor pool cr object
+	cstorPool.Annotations = mapCastName
+
+	mapLabels := make(map[string]string)
+	// Push storage pool claim name to cstor pool cr object as a label
+	mapLabels[string(v1alpha1.StoragePoolClaimCVK)] = spcGot.Name
+
+
+	// Push node hostname to cstor pool cr object as a label.
+
+	mapLabels[string(v1alpha1.CstorPoolHostNameCVK)] = spcGot.Spec.NodeSelector[nodeIndex]
+	cstorPool.Labels = mapLabels
+
+	// TODO : Select disks from nodes and push it to cstor pool cr object
 
 	cstorOps, err := NewCstorPoolOperation(cstorPool)
 	if err != nil {
@@ -73,7 +96,7 @@ func cstorPoolCreator(spcGot *apis.StoragePoolClaim){
 	if err != nil {
 		glog.Errorf("failed to create cas template based cstorpool: error '%s'", err.Error())
 		//return nil, CodedError(500, err.Error())
-	}else {
+	} else {
 		glog.Infof("cas template based cstorpool created successfully: name '%s'", cstorPoolObject.Name)
 	}
 }

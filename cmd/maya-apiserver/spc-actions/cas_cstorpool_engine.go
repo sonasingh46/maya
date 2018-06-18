@@ -234,7 +234,8 @@ func NewCASCreate(casConfigPVC string, casConfigSC string, casTemplate *v1alpha1
 			casTemplate: casTemplate,
 			templateValues: map[string]interface{}{
 				// runtime volume info is set against volume top level property
-				string(v1alpha1.VolumeTLP): runtimeVolumeVals,
+				//string(v1alpha1.VolumeTLP): runtimeVolumeVals,
+				string(v1alpha1.CstorPoolTLP): runtimeVolumeVals,
 			},
 			taskSpecFetcher: f,
 			taskGroupRunner: r,

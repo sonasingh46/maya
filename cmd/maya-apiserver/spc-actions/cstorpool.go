@@ -50,15 +50,16 @@ func NewCstorPoolOperation(cstorPool *v1alpha1.CStorPool) (*cstorPoolOperation, 
 		return nil, fmt.Errorf("failed to instantiate cstorPool operation: nil cstorPool was provided")
 	}
 
-	if len(cstorPool.Namespace) == 0 {
-		return nil, fmt.Errorf("failed to instantiate cstorPool operation: missing run namespace")
-	}
+	// Clustered Scope ? Do we need a namespace ??
+	//if len(cstorPool.Namespace) == 0 {
+	//	return nil, fmt.Errorf("failed to instantiate cstorPool operation: missing run namespace")
+	//}
 
 	kc, err := m_k8s_client.NewK8sClient(cstorPool.Namespace)
 	if err != nil {
 		return nil, err
 	}
-
+	// Put cstor pool object inside cstorPoolOperation object
 	return &cstorPoolOperation{
 		cstorPool: cstorPool,
 		cstorPoolOperationOptions: cstorPoolOperationOptions{
@@ -73,6 +74,7 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 	if v.k8sClient == nil {
 		return nil, fmt.Errorf("unable to create cstorPool: nil k8s client")
 	}
+
 	//disks := v.cstorPool.Spec.Disks
 	//if (disks) == 0 {
 	//	disks = v.volume.Labels[string(v1alpha1.CapacityCVDK)]
@@ -108,6 +110,7 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 
 	// TODO
 	//
+	// TODO :- We need not these variables in case of cstor pool cr  ( or we can have spcName )?
 	// Remove below two lines once provisioner is able to send name of PVC
 	//pvcName := ""
 	//casConfigPVC := ""
@@ -133,7 +136,7 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 	// cas template to create a cas cstorPool
 
 	//castName := sc.Annotations[string(v1alpha1.CASTemplateCVK)]
-	castName := "cast-standard-cstorpool-0.6.0"
+	castName := v.cstorPool.Annotations[string(v1alpha1.CASTemplateCVK)]
 	if len(castName) == 0 {
 		//return nil, fmt.Errorf("unable to create cstorPool: missing create cas template at '%s'", v1alpha1.CASTemplateCVK)
 		return nil, fmt.Errorf("unable to create cstorPool: missing create cas template")
@@ -141,20 +144,28 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 
 	// fetch CASTemplate specifications
 	//cast, err := v.k8sClient.GetOEV1alpha1CAST(castName, mach_apis_meta_v1.GetOptions{})
-	cast, err := v.k8sClient.GetOEV1alpha1CAST(castName,mach_apis_meta_v1.GetOptions{})
+	cast, err := v.k8sClient.GetOEV1alpha1CAST(castName, mach_apis_meta_v1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-
 	// provision cas cstorPool via cas template engine
 	cc, err := NewCASCreate(
 		"null",
 		"null",
 		cast,
 		map[string]string{
-			//string(v1alpha1.OwnerVTP):                 v.volume.Name,
+			// Make it cstor pool specific
+			//string(v1alpha1.OwnerVTP):                 v.cstorPool.Name,
+			string(v1alpha1.CstorPoolOwnerCTP):    v.cstorPool.Name,
+			string(v1alpha1.StoragePoolClaimCTP):  v.cstorPool.Labels[string(v1alpha1.StoragePoolClaimCVK)],
+			string(v1alpha1.CstorPoolHostNameCTP): v.cstorPool.Labels[string(v1alpha1.CstorPoolHostNameCVK)],
+			string(v1alpha1.CstorPoolTypeCTP):     v.cstorPool.Spec.PoolSpec.PoolType,
+			// Disk information will come after querying from NDM
+
 			//string(v1alpha1.CstorPoolDisk):              disks,
-			//string(v1alpha1.RunNamespaceVTP):          v.volume.Namespace,
+			// Clustered scope . Do we need namespace?
+			//string(v1alpha1.RunNamespaceVTP):          v.cstorPool.Namespace,
+
 			//string(v1alpha1.PersistentVolumeClaimVTP): pvcName,
 		},
 	)
@@ -163,11 +174,10 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 	}
 
 	// create the cstorPool
-	 data ,err := cc.create()
+	data, err := cc.create()
 	if err != nil {
 		return nil, err
 	}
-
 
 	// unmarshall into openebs cstorPool
 	cstorPool := &v1alpha1.CStorPool{}

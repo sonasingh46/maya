@@ -90,6 +90,12 @@ const (
 
 	// StorageClassCVK is the key to fetch volume's SC
 	StorageClassCVK CASVolumeKey = "openebs.io/storage-class"
+
+	// StoragePoolClaimCVK is the key to fetch cstor pool's SPC
+	StoragePoolClaimCVK CASVolumeKey = "cas.openebs.io/storage-pool-claim"
+
+	// HostNameCVK is the key to fetch cstor pool cr's host node
+	CstorPoolHostNameCVK CASVolumeKey = "kubernetes.io/hostname"
 )
 
 // CASVolumeDeprecatedKey is a typed string to represent cas volume related

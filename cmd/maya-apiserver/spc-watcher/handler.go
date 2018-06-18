@@ -45,7 +45,7 @@ func (c *Controller) spcEventHandler(operation string, spcGot *apis.StoragePoolC
 	case "add":
 		// TO-DO : Handle Business Logic
 		// Query for this spc object
-		glog.Info("Create SPC Event Handler")
+		glog.Info("Create SPC Event Handler1")
 		// Pass spc object from here to the function
 		err := cstorpool.CreateCstorpool(spcGot)
 		if err !=nil{
