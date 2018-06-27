@@ -354,9 +354,9 @@ func (m *taskExecutor) ExecuteIt() (err error) {
 	} else if m.metaTaskExec.isPatchAppsV1B1Deploy() {
 		err = m.patchAppsV1B1Deploy()
 	} else if m.metaTaskExec.isPutCoreV1Service() {
-		result, err = m.putCoreV1Service()
+		err = m.putCoreV1Service()
 	} else if m.metaTaskExec.isPutOEV1alpha1CstorPool() {
-		result, err = m.putCstorPool()
+		err = m.putCstorPool()
 	} else if m.metaTaskExec.isDeleteExtnV1B1Deploy() {
 		err = m.deleteExtnV1B1Deployment()
 	} else if m.metaTaskExec.isDeleteAppsV1B1Deploy() {
@@ -433,7 +433,7 @@ func (m *taskExecutor) asExtnV1B1Deploy() (*api_extn_v1beta1.Deployment, error) 
 // asCstorPool generates a CstorPool object
 // out of the embedded yaml
 func (m *taskExecutor) asCstorPool() (*v1alpha1.CStorPool, error) {
-	d, err := m_k8s.NewCstorPoolYml("CStorPool", m.task.yml, m.task.values)
+	d, err := m_k8s.NewCstorPoolYml("CStorPool", m.runtask.TaskYml, m.templateValues)
 	if err != nil {
 
 		return nil, err
@@ -552,25 +552,21 @@ func (m *taskExecutor) deleteExtnV1B1Deployment() (err error) {
 }
 
 // putCstorPool will put a CstorPool as defined in the task
-func (m *taskExecutor) putCstorPool() (map[string]interface{}, error) {
+func (m *taskExecutor) putCstorPool() (err error) {
 
 	d, err := m.asCstorPool()
 	if err != nil {
-		return nil, err
+		return
 	}
-	fmt.Println("D object change")
-	// debugtag
-	// This creates the bug
 	cstorPool, err := m.k8sClient.CreateOEV1alpha1CVAsRaw(d)
 	if err != nil {
-		fmt.Println("ERROR IS")
-		fmt.Println(err)
-		return nil, err
+		return
 	}
 
-	e := newQueryExecFormatter(m.identity, m.taskResultQueries, cstorPool)
+	util.SetNestedField(m.templateValues, cstorPool, string(v1alpha1.CurrentJsonResultTLP))
+	//e := newQueryExecFormatter(m.identity, m.taskResultQueries, cstorPool)
 
-	return e.formattedResult()
+	return
 }
 
 // putCoreV1Service will put a Service whose specs are configured in the RunTask
