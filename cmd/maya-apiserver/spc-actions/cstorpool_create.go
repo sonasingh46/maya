@@ -39,6 +39,16 @@ func CreateCstorpool(spcGot *apis.StoragePoolClaim) (error) {
 		fmt.Println("conversion of max pool count failed : ", err)
 		return err
 	}
+	poolType := spcGot.Spec.PoolSpec.PoolType
+	if(poolType==""){
+		fmt.Println("aborting cstor pool create operation as no poolType specified")
+		return fmt.Errorf("error")
+	}
+	diskList := spcGot.Spec.Disks.DiskList
+	if(len(diskList)==0){
+		fmt.Println("aborting cstor pool create operation as no disk specified")
+		return fmt.Errorf("error")
+	}
 	// Handle max pool count invalid inputs
 	if maxPoolCount <= 0 {
 		fmt.Println("aborting cstor pool create operation as pool count is not greater then ", maxPoolCount)
@@ -54,14 +64,15 @@ func CreateCstorpool(spcGot *apis.StoragePoolClaim) (error) {
 
 // function that creates a cstorpool CR
 func cstorPoolCreator(spcGot *apis.StoragePoolClaim, nodeIndex int) {
-	fmt.Println("Creation of cstor pool CR initiated")
+	fmt.Println("Creation of cstor pool CR initiated Now")
 	fmt.Println("Creating cstorpool cr for spc %s via CASTemplate", spcGot.ObjectMeta.Name)
 	// Wether business logic will add some information other then extracted from spc for cstropool cr creation?
 	// Create an empty cstor pool object
 	cstorPool := &v1alpha1.CStorPool{}
 
 	//Generate name using the prefix of StoragePoolClaim name and nodename hash
-	cstorPool.ObjectMeta.Name = spcGot.Name + "-" + spcGot.Spec.NodeSelector[nodeIndex]
+	cstorPool.ObjectMeta.Name = spcGot.Name
+	// cstorPool.ObjectMeta.Name = spcGot.Name + "-" + spcGot.Spec.NodeSelector[nodeIndex]
 
 	// Add Pooltype specification
 	cstorPool.Spec.PoolSpec.PoolType = spcGot.Spec.PoolSpec.PoolType
@@ -82,7 +93,7 @@ func cstorPoolCreator(spcGot *apis.StoragePoolClaim, nodeIndex int) {
 
 	// Push node hostname to cstor pool cr object as a label.
 
-	mapLabels[string(v1alpha1.CstorPoolHostNameCVK)] = spcGot.Spec.NodeSelector[nodeIndex]
+	// mapLabels[string(v1alpha1.CstorPoolHostNameCVK)] = spcGot.Spec.NodeSelector[nodeIndex]
 	cstorPool.Labels = mapLabels
 
 	// TODO : Select disks from nodes and push it to cstor pool cr object

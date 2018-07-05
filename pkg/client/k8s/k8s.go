@@ -41,7 +41,6 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
-	"fmt"
 )
 
 // K8sKind represents the Kinds understood by Kubernetes
@@ -64,6 +63,8 @@ const (
 	PersistentVolumeClaimKK K8sKind = "PersistentVolumeClaim"
 	// CstorPoolCRKK is a custom K8s CStorPool Kind
 	CstorPoolCRKK K8sKind = "CStorPool"
+	// DiskCRKK is a custom K8s Disk Kind
+	DiskCRKK K8sKind = "Disk"
 	// StoragePoolClaimKK is a custom K8s StoragePoolClaim Kind
 	StoragePoolClaimKK K8sKind = "StoragePoolClaim"
 )
@@ -134,6 +135,10 @@ type K8sClient struct {
 	// NOTE: This property is useful to mock
 	// during unit testing
 	CstorPool *api_oe_v1alpha1.CStorPool
+	// Disk refers to a K8s Disk CRD object
+	// NOTE: This property is useful to mock
+	// during unit testing
+	Disk *api_oe_v1alpha1.Disk
 
 	// StoragePoolClaim refers to a K8s StoragePoolClaim CRD object
 	// NOTE: This property is useful to mock
@@ -225,14 +230,25 @@ func (k *K8sClient) GetOEV1alpha1CP(name string) (*api_oe_v1alpha1.CStorPool, er
 	cpOps := k.oeV1alpha1CPOps()
 	return cpOps.Get(name, mach_apis_meta_v1.GetOptions{})
 }
+// oeV1alpha1DiskOps is a utility function that provides a instance capable of
+// executing various OpenEBS Disk related operations
+func (k *K8sClient) oeV1alpha1DiskOps() typed_oe_v1alpha1.DiskInterface {
+	return k.oecs.OpenebsV1alpha1().Disks()
+}
+// GetOEV1alpha1Disk fetches the OpenEBS Disk specs based on
+// the provided name
+func (k *K8sClient) GetOEV1alpha1Disk(name string) (*api_oe_v1alpha1.Disk, error) {
+	if k.Disk != nil {
+		return k.Disk, nil
+	}
 
+	diskOps := k.oeV1alpha1DiskOps()
+	return diskOps.Get(name, mach_apis_meta_v1.GetOptions{})
+}
 // CreateOEV1alpha1CVAsRaw creates a CstorVolume
 func (k *K8sClient) CreateOEV1alpha1CVAsRaw(v *api_oe_v1alpha1.CStorPool) (result []byte, err error) {
 	csv, err := k.CreateOEV1alpha1CP(v)
 	if err != nil {
-		fmt.Println("ERROR IS 1")
-		fmt.Println(err)
-
 		return
 	}
 
@@ -422,6 +438,17 @@ func (k *K8sClient) ListAppsV1B1DeploymentAsRaw(opts mach_apis_meta_v1.ListOptio
 		VersionedParams(&opts, scheme.ParameterCodec).
 		DoRaw()
 
+	return
+}
+// ListOEV1alpha1DiskRaw fetches a list of Disk as per the
+// provided options
+func (k *K8sClient) ListOEV1alpha1DiskRaw(opts mach_apis_meta_v1.ListOptions) (result []byte, err error) {
+	diskOps := k.oeV1alpha1DiskOps()
+	diskList, err := diskOps.List(opts)
+	if err != nil {
+		return
+	}
+	result, err = json.Marshal(diskList)
 	return
 }
 

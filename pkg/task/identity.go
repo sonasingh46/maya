@@ -76,7 +76,9 @@ func (i taskIdentifier) isStoragePool() bool {
 func (i taskIdentifier) isCstorPool() bool {
 	return i.identity.Kind == string(m_k8s_client.CstorPoolCRKK)
 }
-
+func (i taskIdentifier) isDisk() bool {
+	return i.identity.Kind == string(m_k8s_client.DiskCRKK)
+}
 func (i taskIdentifier) isConfigMap() bool {
 	return i.identity.Kind == string(m_k8s_client.ConfigMapKK)
 }
@@ -126,4 +128,7 @@ func (i taskIdentifier) isOEV1alpha1SP() bool {
 }
 func (i taskIdentifier) isOEV1alpha1CstorPool() bool {
 	return i.isOEV1alpha1() && i.isCstorPool()
+}
+func (i taskIdentifier) isOEV1alpha1Disk() bool {
+	return i.isOEV1alpha1() && i.isDisk()
 }

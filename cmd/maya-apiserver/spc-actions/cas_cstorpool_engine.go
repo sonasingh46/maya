@@ -99,7 +99,7 @@ func buildCASCommon(
 			// runtime volume info is set against volume top level property
 			string(v1alpha1.CstorPoolTLP): runtimeVals,
 			// list items is set as a top level property
-			//string(v1alpha1.ListItemsTLP): map[string]interface{}{},
+			string(v1alpha1.ListItemsTLP): map[string]interface{}{},
 		},
 		taskSpecFetcher: fetcher,
 		taskGroupRunner: grpRunner,

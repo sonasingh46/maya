@@ -270,7 +270,9 @@ func (m *metaTaskExecutor) isGetOEV1alpha1SP() bool {
 func (m *metaTaskExecutor) isGetCoreV1PVC() bool {
 	return m.identifier.isCoreV1PVC() && m.isGet()
 }
-
+func (m *metaTaskExecutor) isListOEV1alpha1Disk() bool {
+	return m.identifier.isOEV1alpha1Disk() && m.isList()
+}
 // asRollbackInstance defines a metaTaskExecutor suitable for
 // rollback operation.
 //

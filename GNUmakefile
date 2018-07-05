@@ -162,5 +162,12 @@ apiserver-image: mayactl apiserver
 	@rm buildscripts/apiserver/${APISERVER}
 	@rm buildscripts/apiserver/${MAYACTL}
 	@sh buildscripts/apiserver/push
+image: apiserver
+	@echo "----------------------------"
+	@echo "--> apiserver image         "
+	@echo "----------------------------"
+	@cp bin/apiserver/${APISERVER} buildscripts/apiserver/
+	@cd buildscripts/apiserver && sudo docker build -t openebs/m-apiserver:watcher --build-arg BUILD_DATE=${BUILD_DATE} .
+	@rm buildscripts/apiserver/${APISERVER}
 
 .PHONY: all bin cov integ test vet maya-agent test-nodep apiserver image apiserver-image maya-image golint

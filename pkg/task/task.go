@@ -369,6 +369,8 @@ func (m *taskExecutor) ExecuteIt() (err error) {
 		err = m.getCoreV1PVC()
 	} else if m.metaTaskExec.isList() {
 		err = m.listK8sResources()
+	} else if m.metaTaskExec.isListOEV1alpha1Disk() {
+		err = m.listK8sResources()
 	} else {
 		err = fmt.Errorf("failed to execute task: not a supported operation: meta info '%#v'", m.metaTaskExec.getMetaInfo())
 	}
@@ -661,6 +663,8 @@ func (m *taskExecutor) listK8sResources() (err error) {
 		op, err = m.k8sClient.ListExtnV1B1DeploymentAsRaw(opts)
 	} else if m.metaTaskExec.isListAppsV1B1Deploy() {
 		op, err = m.k8sClient.ListAppsV1B1DeploymentAsRaw(opts)
+	} else if m.metaTaskExec.isListOEV1alpha1Disk() {
+		op, err = m.k8sClient.ListOEV1alpha1DiskRaw(opts)
 	} else {
 		err = fmt.Errorf("failed to list k8s resources: meta task not supported: task details '%#v'", m.metaTaskExec.getTaskIdentity())
 	}
@@ -668,7 +672,6 @@ func (m *taskExecutor) listK8sResources() (err error) {
 	if err != nil {
 		return
 	}
-
 	// set the json doc result
 	util.SetNestedField(m.templateValues, op, string(v1alpha1.CurrentJsonResultTLP))
 	return

@@ -22,6 +22,8 @@ type CStorPoolExpansion interface{}
 
 type CStorVolumeReplicaExpansion interface{}
 
+type DiskExpansion interface{}
+
 type StoragePoolExpansion interface{}
 
 type StoragePoolClaimExpansion interface{}

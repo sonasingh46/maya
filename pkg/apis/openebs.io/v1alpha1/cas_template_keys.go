@@ -96,7 +96,7 @@ const (
 // after VolumeTLP
 type VolumeTLPProperty string
 type CstorPoolTLPProperty string
-type Disk string
+//type Disk string
 
 const (
 	// OwnerVTP indicates the owner of this volume; the one who

@@ -30,6 +30,10 @@ type CStorPoolListerExpansion interface{}
 // CStorVolumeReplicaLister.
 type CStorVolumeReplicaListerExpansion interface{}
 
+// DiskListerExpansion allows custom methods to be added to
+// DiskLister.
+type DiskListerExpansion interface{}
+
 // StoragePoolListerExpansion allows custom methods to be added to
 // StoragePoolLister.
 type StoragePoolListerExpansion interface{}

@@ -38,6 +38,10 @@ func (c *FakeOpenebsV1alpha1) CStorVolumeReplicas() v1alpha1.CStorVolumeReplicaI
 	return &FakeCStorVolumeReplicas{c}
 }
 
+func (c *FakeOpenebsV1alpha1) Disks() v1alpha1.DiskInterface {
+	return &FakeDisks{c}
+}
+
 func (c *FakeOpenebsV1alpha1) StoragePools() v1alpha1.StoragePoolInterface {
 	return &FakeStoragePools{c}
 }
