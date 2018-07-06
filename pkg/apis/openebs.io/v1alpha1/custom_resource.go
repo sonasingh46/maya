@@ -210,7 +210,8 @@ type CStorPool struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec CStorPoolSpec `json:"spec"`
+	Spec   CStorPoolSpec   `json:"spec"`
+	Status CStorPoolStatus `json:"status"`
 }
 
 // CStorPoolSpec is the spec listing fields for a CStorPool resource.
@@ -226,11 +227,31 @@ type DiskAttr struct {
 
 // CStorPoolAttr is to describe zpool related attributes.
 type CStorPoolAttr struct {
-	PoolName  string `json:"poolName"`
-	CacheFile string `json:"cacheFile"`
-	PoolType  string `json:"poolType"` //mirror, striped
+	CacheFile        string `json:"cacheFile"`        //optional, faster if specified
+	PoolType         string `json:"poolType"`         //mirror, striped
+	OverProvisioning bool   `json:"overProvisioning"` //true or false
 }
 
+type CStorPoolPhase string
+
+// Status written onto CStorPool and CStorVolumeReplica objects.
+const (
+	// CStorPoolStatusInit ensures the create operation is to be done, if import fails.
+	CStorPoolStatusInit CStorPoolPhase = "init"
+	// CStorPoolStatusOnline ensures the resource is available.
+	CStorPoolStatusOnline CStorPoolPhase = "online"
+	// CStorPoolStatusOffline ensures the resource is not available.
+	CStorPoolStatusOffline CStorPoolPhase = "offline"
+	// CStorPoolStatusDeletionFailed ensures the resource deletion has failed.
+	CStorPoolStatusDeletionFailed CStorPoolPhase = "deletion-failed"
+	// CStorPoolStatusInvalid ensures invalid resource.
+	CStorPoolStatusInvalid CStorPoolPhase = "invalid"
+)
+
+// CStorPoolStatus is for handling status of pool.
+type CStorPoolStatus struct {
+	Phase CStorPoolPhase `json:"phase"`
+}
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +resource:path=cstorpools
 

@@ -225,6 +225,7 @@ func (m *metaTaskExecutor) isPutAppsV1B1Deploy() bool {
 	return m.identifier.isAppsV1B1Deploy() && m.isPut()
 }
 
+
 func (m *metaTaskExecutor) isPatchAppsV1B1Deploy() bool {
 	return m.identifier.isAppsV1B1Deploy() && m.isPatch()
 }
@@ -266,7 +267,13 @@ func (m *metaTaskExecutor) isListAppsV1B1Deploy() bool {
 func (m *metaTaskExecutor) isGetOEV1alpha1SP() bool {
 	return m.identifier.isOEV1alpha1SP() && m.isGet()
 }
+func (m *metaTaskExecutor) isGetOEV1alpha1SPC() bool {
+	return m.identifier.isOEV1alpha1SPC() && m.isGet()
+}
 
+func (m *metaTaskExecutor) isGetOEV1alpha1Disk() bool {
+	return m.identifier.isOEV1alpha1Disk() && m.isGet()
+}
 func (m *metaTaskExecutor) isGetCoreV1PVC() bool {
 	return m.identifier.isCoreV1PVC() && m.isGet()
 }

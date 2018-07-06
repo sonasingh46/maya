@@ -64,7 +64,7 @@ func CreateCstorpool(spcGot *apis.StoragePoolClaim) (error) {
 
 // function that creates a cstorpool CR
 func cstorPoolCreator(spcGot *apis.StoragePoolClaim, nodeIndex int) {
-	fmt.Println("Creation of cstor pool CR initiated Now")
+	fmt.Println("Creation of cstor pool CR initiated Now Image.1")
 	fmt.Println("Creating cstorpool cr for spc %s via CASTemplate", spcGot.ObjectMeta.Name)
 	// Wether business logic will add some information other then extracted from spc for cstropool cr creation?
 	// Create an empty cstor pool object
@@ -89,6 +89,9 @@ func cstorPoolCreator(spcGot *apis.StoragePoolClaim, nodeIndex int) {
 	mapLabels := make(map[string]string)
 	// Push storage pool claim name to cstor pool cr object as a label
 	mapLabels[string(v1alpha1.StoragePoolClaimCVK)] = spcGot.Name
+
+	// Add init status
+	cstorPool.Status.Phase= v1alpha1.CStorPoolStatusInit
 
 
 	// Push node hostname to cstor pool cr object as a label.

@@ -160,13 +160,7 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 			string(v1alpha1.StoragePoolClaimCTP):  v.cstorPool.Labels[string(v1alpha1.StoragePoolClaimCVK)],
 			string(v1alpha1.CstorPoolHostNameCTP): v.cstorPool.Labels[string(v1alpha1.CstorPoolHostNameCVK)],
 			string(v1alpha1.CstorPoolTypeCTP):     v.cstorPool.Spec.PoolSpec.PoolType,
-			// Disk information will come after querying from NDM
-
-			//string(v1alpha1.CstorPoolDisk):              disks,
-			// Clustered scope . Do we need namespace?
-			//string(v1alpha1.RunNamespaceVTP):          v.cstorPool.Namespace,
-
-			//string(v1alpha1.PersistentVolumeClaimVTP): pvcName,
+			string(v1alpha1.CStorPoolPhaseCTP):    string(v.cstorPool.Status.Phase),
 		},
 	)
 	if err != nil {

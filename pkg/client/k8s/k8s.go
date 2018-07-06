@@ -195,6 +195,11 @@ func (k *K8sClient) GetStorageV1SC(name string, opts mach_apis_meta_v1.GetOption
 func (k *K8sClient) oeV1alpha1SPOps() typed_oe_v1alpha1.StoragePoolInterface {
 	return k.oecs.OpenebsV1alpha1().StoragePools()
 }
+// oeV1alpha1SPCOps is a utility function that provides a instance capable of
+// executing various OpenEBS StoragePoolClaim related operations
+func (k *K8sClient) oeV1alpha1SPCOps() typed_oe_v1alpha1.StoragePoolClaimInterface {
+	return k.oecs.OpenebsV1alpha1().StoragePoolClaims()
+}
 
 // GetOEV1alpha1SP fetches the OpenEBS StoragePool specs based on
 // the provided name
@@ -205,6 +210,16 @@ func (k *K8sClient) GetOEV1alpha1SP(name string) (*api_oe_v1alpha1.StoragePool, 
 
 	spOps := k.oeV1alpha1SPOps()
 	return spOps.Get(name, mach_apis_meta_v1.GetOptions{})
+}
+// GetOEV1alpha1SP fetches the OpenEBS StoragePool specs based on
+// the provided name
+func (k *K8sClient) GetOEV1alpha1SPC(name string) (*api_oe_v1alpha1.StoragePoolClaim, error) {
+	if k.StoragePoolClaim != nil {
+		return k.StoragePoolClaim, nil
+	}
+
+	spcOps := k.oeV1alpha1SPCOps()
+	return spcOps.Get(name, mach_apis_meta_v1.GetOptions{})
 }
 // Start CSTOR
 
@@ -367,6 +382,25 @@ func (k *K8sClient) GetOEV1alpha1SPAsRaw(name string) (result []byte, err error)
 	//	DoRaw()
 
 	//return
+}
+// GetOEV1alpha1SPAsRaw fetches the OpenEBS SP with the provided name
+func (k *K8sClient) GetOEV1alpha1SPCAsRaw(name string) (result []byte, err error) {
+	spc, err := k.GetOEV1alpha1SPC(name)
+	if err != nil {
+		return
+	}
+
+	return json.Marshal(spc)
+
+}
+// GetOEV1alpha1DiskAsRaw fetches the Diks with the provided name
+func (k *K8sClient) GetOEV1alpha1DiskAsRaw(name string) (result []byte, err error) {
+	disk, err := k.GetOEV1alpha1Disk(name)
+	if err != nil {
+		return
+	}
+
+	return json.Marshal(disk)
 }
 
 // podOps is a utility function that provides a instance capable of

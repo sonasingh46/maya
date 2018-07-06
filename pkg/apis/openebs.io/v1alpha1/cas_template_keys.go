@@ -96,7 +96,6 @@ const (
 // after VolumeTLP
 type VolumeTLPProperty string
 type CstorPoolTLPProperty string
-//type Disk string
 
 const (
 	// OwnerVTP indicates the owner of this volume; the one who
@@ -146,6 +145,19 @@ const (
 	//  The corresponding value will be accessed as
 	// {{ .CstorPool.poolType }}
 	CstorPoolTypeCTP CstorPoolTLPProperty = "poolType"
+	// CstorPoolTypeCTP indicates the type of this cstor pool cr;
+	//
+	// NOTE:
+	//  The corresponding value will be accessed as
+	// {{ .CstorPool.poolType }}
+	CstorPoolDiskCTP CstorPoolTLPProperty = "diskList"
+
+	// CStorPoolPhase indicates the status of this cstor pool cr;
+	//
+	// NOTE:
+	//  The corresponding value will be accessed as
+	// {{ .CstorPool.phase }}
+	CStorPoolPhaseCTP CstorPoolTLPProperty = "phase"
 )
 
 // PolicyTLPProperty is the name of the property that is found

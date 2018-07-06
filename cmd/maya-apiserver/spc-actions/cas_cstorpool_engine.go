@@ -285,45 +285,15 @@ func (c *casCreate) addConfigToConfigTLP() error {
 	return nil
 }
 
-// getAnnotations will fetch the annotations from all tasks
-func (c *casCreate) getAnnotations() (map[string]string, error) {
-	// extract results of all tasks
-	allTasksResults := c.templateValues[string(v1alpha1.TaskResultTLP)]
-	if allTasksResults == nil {
-		return nil, nil
-	}
-
-	annotations := map[string]string{}
-
-	if allTasksResultsMap, ok := allTasksResults.(map[string]interface{}); ok {
-		// iterate through each task & capture its annotation from task results
-		for tID, _ := range allTasksResultsMap {
-			if strings.Contains(tID, string(v1alpha1.AnnotationsTRTP)) {
-				isMerged := util.MergeMapOfStrings(annotations, util.GetMapOfStrings(allTasksResultsMap, tID))
-				if !isMerged {
-					return nil, fmt.Errorf("failed to add annotations from task having task result id '%s'", tID)
-				}
-			}
-		}
-	}
-
-	return annotations, nil
-}
-
 // create creates a cas volume
 func (c *casCreate) create() (output []byte, err error) {
 	// add config
-	//err = c.addConfigToConfigTLP()
-	//if err != nil {
-	//	return nil, err
-	//}
+	err = c.addConfigToConfigTLP()
+	if err != nil {
+		return nil, err
+	}
 
 	return c.run()
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//return c.getAnnotations()
 }
 
 // casEngine supports various cas volume related operations

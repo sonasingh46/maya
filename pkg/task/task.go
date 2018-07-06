@@ -365,6 +365,10 @@ func (m *taskExecutor) ExecuteIt() (err error) {
 		err = m.deleteCoreV1Service()
 	} else if m.metaTaskExec.isGetOEV1alpha1SP() {
 		err = m.getOEV1alpha1SP()
+	} else if m.metaTaskExec.isGetOEV1alpha1SPC() {
+		err = m.getOEV1alpha1SPC()
+	} else if m.metaTaskExec.isGetOEV1alpha1Disk() {
+		err = m.getOEV1alpha1Disk()
 	} else if m.metaTaskExec.isGetCoreV1PVC() {
 		err = m.getCoreV1PVC()
 	} else if m.metaTaskExec.isList() {
@@ -420,7 +424,6 @@ func (m *taskExecutor) asAppsV1B1Deploy() (*api_apps_v1beta1.Deployment, error) 
 
 	return d.AsAppsV1B1Deployment()
 }
-
 // asExtnV1B1Deploy generates a K8s Deployment object
 // out of the embedded yaml
 func (m *taskExecutor) asExtnV1B1Deploy() (*api_extn_v1beta1.Deployment, error) {
@@ -612,7 +615,27 @@ func (m *taskExecutor) getOEV1alpha1SP() (err error) {
 	util.SetNestedField(m.templateValues, sp, string(v1alpha1.CurrentJsonResultTLP))
 	return
 }
+// getOEV1alpha1SPC will get the StoragePoolClaim as specified in the RunTask
+func (m *taskExecutor) getOEV1alpha1SPC() (err error) {
+	spc, err := m.k8sClient.GetOEV1alpha1SPCAsRaw(m.objectName)
+	if err != nil {
+		return
+	}
 
+	util.SetNestedField(m.templateValues, spc, string(v1alpha1.CurrentJsonResultTLP))
+	return
+}
+
+// getOEV1alpha1Disk will get the Disk as specified in the RunTask
+func (m *taskExecutor) getOEV1alpha1Disk() (err error) {
+	sp, err := m.k8sClient.GetOEV1alpha1DiskAsRaw(m.objectName)
+	if err != nil {
+		return
+	}
+
+	util.SetNestedField(m.templateValues, sp, string(v1alpha1.CurrentJsonResultTLP))
+	return
+}
 // getExtnV1B1Deployment will get the Deployment as specified in the RunTask
 func (m *taskExecutor) getExtnV1B1Deployment() (err error) {
 	deploy, err := m.k8sClient.GetExtnV1B1DeploymentAsRaw(m.objectName)
