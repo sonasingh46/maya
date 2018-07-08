@@ -31,16 +31,15 @@ func (c *Controller) syncHandler(key, operation string) error {
 	if err != nil {
 		return err
 	}
-	status, err := c.spcEventHandler(operation, spcGot)
+	status, err := c.spcEventHandler(operation, spcGot, key)
 	if status == "Igonre" {
-		fmt.Println("Ignored Status")
 		return nil
 	}
 	return nil
 }
 
 // spcPoolEventHandler is to handle SPC related events.
-func (c *Controller) spcEventHandler(operation string, spcGot *apis.StoragePoolClaim) (string, error) {
+func (c *Controller) spcEventHandler(operation string, spcGot *apis.StoragePoolClaim, key string) (string, error) {
 	switch operation {
 	case "add":
 		// TO-DO : Handle Business Logic
@@ -59,8 +58,10 @@ func (c *Controller) spcEventHandler(operation string, spcGot *apis.StoragePoolC
 		break
 
 	case "delete":
-		// TO-DO : Handle Business Logic
-		glog.Info("Delete SPC Event Handler")
+		err := cstorpool.DeleteCstorpool(key)
+		if err !=nil{
+			fmt.Println("Could Not Delete cstor pool")
+		}
 		break
 	default:
 		// Ignore

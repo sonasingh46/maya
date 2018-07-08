@@ -247,7 +247,9 @@ func (m *metaTaskExecutor) isDeleteAppsV1B1Deploy() bool {
 func (m *metaTaskExecutor) isDeleteCoreV1Service() bool {
 	return m.identifier.isCoreV1Service() && m.isDelete()
 }
-
+func (m *metaTaskExecutor) isDeleteOEV1alpha1CSP() bool {
+	return m.identifier.isOEV1alpha1CstorPool() && m.isDelete()
+}
 func (m *metaTaskExecutor) isListCoreV1Pod() bool {
 	return m.identifier.isCoreV1Pod() && m.isList()
 }
@@ -279,6 +281,13 @@ func (m *metaTaskExecutor) isGetCoreV1PVC() bool {
 }
 func (m *metaTaskExecutor) isListOEV1alpha1Disk() bool {
 	return m.identifier.isOEV1alpha1Disk() && m.isList()
+}
+
+func (m *metaTaskExecutor) isListOEV1alpha1SPC() bool {
+	return m.identifier.isOEV1alpha1SPC() && m.isList()
+}
+func (m *metaTaskExecutor) isListOEV1alpha1CSP() bool {
+	return m.identifier.isOEV1alpha1CstorPool() && m.isList()
 }
 // asRollbackInstance defines a metaTaskExecutor suitable for
 // rollback operation.

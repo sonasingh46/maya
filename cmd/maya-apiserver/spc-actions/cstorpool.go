@@ -64,7 +64,6 @@ func NewCstorPoolOperation(cstorPool *v1alpha1.CStorPool) (*cstorPoolOperation, 
 		cstorPool: cstorPool,
 		cstorPoolOperationOptions: cstorPoolOperationOptions{
 			k8sClient: kc,
-			//runNamespace: cstorPool.Namespace,
 		},
 	}, nil
 }
@@ -75,67 +74,6 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 		return nil, fmt.Errorf("unable to create cstorPool: nil k8s client")
 	}
 
-	//disks := v.cstorPool.Spec.Disks
-	//if (disks) == 0 {
-	//	disks = v.volume.Labels[string(v1alpha1.CapacityCVDK)]
-	//}
-	/*
-	capacity := v.volume.Spec.Capacity
-	if len(capacity) == 0 {
-		capacity = v.volume.Labels[string(v1alpha1.CapacityCVDK)]
-	}
-
-	if len(capacity) == 0 {
-		return nil, fmt.Errorf("unable to create volume: missing volume capacity")
-	}*/
-
-	// TODO
-	//
-	// UnComment below once provisioner is able to send name of PVC
-	//
-	// pvc name corresponding to this volume
-	//pvcName := v.volume.Labels[string(v1alpha1.PersistentVolumeClaimCVK)]
-	//if len(pvcName) == 0 {
-	//	return nil, fmt.Errorf("unable to create volume: missing persistent volume claim")
-	//}
-
-	// fetch the pvc specifications
-	//pvc, err := v.k8sClient.GetPVC(pvcName, mach_apis_meta_v1.GetOptions{})
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	// extract the cas volume config from pvc
-	//casConfigPVC := pvc.Annotations[string(v1alpha1.CASConfigCVK)]
-
-	// TODO
-	//
-	// TODO :- We need not these variables in case of cstor pool cr  ( or we can have spcName )?
-	// Remove below two lines once provisioner is able to send name of PVC
-	//pvcName := ""
-	//casConfigPVC := ""
-
-	// get the storage class name corresponding to this volume
-	/*
-	scName := v.volume.Labels[string(v1alpha1.StorageClassCVK)]
-	if len(scName) == 0 {
-		return nil, fmt.Errorf("unable to create volume: missing storage class")
-	}*/
-
-	// fetch the storage pool claim specifications
-	/*
-	// Need to fetch the SPC object
-	sc, err := v.k8sClient.GetStorageV1SC(scName, mach_apis_meta_v1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}*/
-
-	// extract the cas volume config from storage class
-	//casConfigSC := sc.Annotations[string(v1alpha1.CASConfigCVK)]
-
-	// cas template to create a cas cstorPool
-
-	//castName := sc.Annotations[string(v1alpha1.CASTemplateCVK)]
 	castName := v.cstorPool.Annotations[string(v1alpha1.CASTemplateCVK)]
 	if len(castName) == 0 {
 		//return nil, fmt.Errorf("unable to create cstorPool: missing create cas template at '%s'", v1alpha1.CASTemplateCVK)
@@ -169,6 +107,52 @@ func (v *cstorPoolOperation) Create() (*v1alpha1.CStorPool, error) {
 
 	// create the cstorPool
 	data, err := cc.create()
+	if err != nil {
+		return nil, err
+	}
+
+	// unmarshall into openebs cstorPool
+	cstorPool := &v1alpha1.CStorPool{}
+	err = yaml.Unmarshal(data, cstorPool)
+	if err != nil {
+		return nil, err
+	}
+	return cstorPool, nil
+}
+
+func (v *cstorPoolOperation) Delete() (*v1alpha1.CStorPool, error) {
+	if len(v.cstorPool.Name) == 0 {
+		return nil, fmt.Errorf("unable to delete cstor pool: cstor pool name not provided")
+	}
+
+	// cas template to delete a cstor pool
+	// Need to pass it as env variable
+	castName := "cstor-pool-delete-cast"
+	if len(castName) == 0 {
+		// use the default delete cas template otherwise
+		//castName = string(v1alpha1.CASTemplateForDeleteCVD)
+		fmt.Println("No CAS template for delete")
+	}
+
+	// fetch delete cas template specifications
+	cast, err := v.k8sClient.GetOEV1alpha1CAST(castName, mach_apis_meta_v1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// delete cstor pool via cas template engine
+	engine, err := NewCASEngine(
+		cast,
+		map[string]string{
+			string(v1alpha1.CstorPoolOwnerCTP):    v.cstorPool.Name,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// delete the cas cstorPool
+	data, err := engine.delete()
 	if err != nil {
 		return nil, err
 	}

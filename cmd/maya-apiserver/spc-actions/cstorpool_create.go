@@ -28,10 +28,6 @@ import (
 
 func CreateCstorpool(spcGot *apis.StoragePoolClaim) (error) {
 	// Business logic for creation of cstor pool cr
-	// Launch as many go routines as the number of cstor pool crs need to be created.
-	// How to handle the cr creation failure?
-
-	// Fetch the number of cstor pools that should be created
 	maxPool := spcGot.Spec.MaxPools
 	// Convert maxPool which is a string type to integer type
 	maxPoolCount, err := strconv.Atoi(maxPool)

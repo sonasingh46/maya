@@ -193,7 +193,6 @@ func (v *VolumeOperation) Delete() (*v1alpha1.CASVolume, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// delete the cas volume
 	data, err := engine.delete()
 	if err != nil {

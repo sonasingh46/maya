@@ -486,6 +486,30 @@ func (k *K8sClient) ListOEV1alpha1DiskRaw(opts mach_apis_meta_v1.ListOptions) (r
 	return
 }
 
+// ListOEV1alpha1SPCRaw fetches a list of SPC as per the
+// provided options
+func (k *K8sClient) ListOEV1alpha1SPCRaw(opts mach_apis_meta_v1.ListOptions) (result []byte, err error) {
+	spcOps := k.oeV1alpha1SPCOps()
+	spcList, err := spcOps.List(opts)
+	if err != nil {
+		return
+	}
+	result, err = json.Marshal(spcList)
+	return
+}
+// ListOEV1alpha1CSPRaw fetches a list of Cstor Pool as per the
+// provided options
+func (k *K8sClient) ListOEV1alpha1CSPRaw(opts mach_apis_meta_v1.ListOptions) (result []byte, err error) {
+	cspOps := k.oeV1alpha1CPOps()
+	cspList, err := cspOps.List(opts)
+	if err != nil {
+		return
+	}
+	result, err = json.Marshal(cspList)
+	return
+}
+
+
 // serviceOps is a utility function that provides a instance capable of
 // executing various k8s service related operations.
 func (k *K8sClient) serviceOps() typed_core_v1.ServiceInterface {
@@ -517,6 +541,15 @@ func (k *K8sClient) CreateCoreV1Service(svc *api_core_v1.Service) (*api_core_v1.
 // DeleteCoreV1Service deletes a K8s Service
 func (k *K8sClient) DeleteCoreV1Service(name string) error {
 	sops := k.coreV1ServiceOps()
+	deletePropagation := mach_apis_meta_v1.DeletePropagationForeground
+	return sops.Delete(name, &mach_apis_meta_v1.DeleteOptions{
+		PropagationPolicy: &deletePropagation,
+	})
+}
+
+// DeleteCoreV1Service deletes a K8s Service
+func (k *K8sClient) DeleteOEV1alpha1CSP(name string) error {
+	sops := k.oeV1alpha1CPOps()
 	deletePropagation := mach_apis_meta_v1.DeletePropagationForeground
 	return sops.Delete(name, &mach_apis_meta_v1.DeleteOptions{
 		PropagationPolicy: &deletePropagation,

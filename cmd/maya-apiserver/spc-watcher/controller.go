@@ -116,7 +116,7 @@ func NewController(
 			oldSpc := old.(*apis.StoragePoolClaim)
 
 			if(IsDeleteEvent(newSpc)){
-				q.Operation = "ignore"
+				q.Operation = "delete"
 			} else {
 			if(newSpc.ObjectMeta.ResourceVersion==oldSpc.ObjectMeta.ResourceVersion){
 				q.Operation = "sync"
@@ -128,8 +128,9 @@ func NewController(
 			controller.enqueueSpc(new, q)
 		},
 		DeleteFunc: func(obj interface{}) {
-			q.Operation = "delete"
-			controller.enqueueSpc(obj, q)
+			// obj is the delete object
+			// If the use case is to utilize the content of deleted object, a hadler should be hooked in here.
+			// Workqueue stores key of object and the object cannot be retrieved later
 		},
 	})
 

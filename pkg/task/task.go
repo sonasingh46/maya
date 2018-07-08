@@ -363,6 +363,8 @@ func (m *taskExecutor) ExecuteIt() (err error) {
 		err = m.deleteAppsV1B1Deployment()
 	} else if m.metaTaskExec.isDeleteCoreV1Service() {
 		err = m.deleteCoreV1Service()
+	} else if m.metaTaskExec.isDeleteOEV1alpha1CSP() {
+		err = m.deleteOEV1alpha1CSP()
 	} else if m.metaTaskExec.isGetOEV1alpha1SP() {
 		err = m.getOEV1alpha1SP()
 	} else if m.metaTaskExec.isGetOEV1alpha1SPC() {
@@ -604,6 +606,20 @@ func (m *taskExecutor) deleteCoreV1Service() (err error) {
 
 	return
 }
+// deleteOEV1alpha1CSP will delete one or more cstor pool as specified in
+// the RunTask
+func (m *taskExecutor) deleteOEV1alpha1CSP() (err error) {
+	objectNames := strings.Split(strings.TrimSpace(m.objectName), ",")
+
+	for _, name := range objectNames {
+		err = m.k8sClient.DeleteOEV1alpha1CSP(name)
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
 
 // getOEV1alpha1SP will get the StoragePool as specified in the RunTask
 func (m *taskExecutor) getOEV1alpha1SP() (err error) {
@@ -688,6 +704,10 @@ func (m *taskExecutor) listK8sResources() (err error) {
 		op, err = m.k8sClient.ListAppsV1B1DeploymentAsRaw(opts)
 	} else if m.metaTaskExec.isListOEV1alpha1Disk() {
 		op, err = m.k8sClient.ListOEV1alpha1DiskRaw(opts)
+	} else if m.metaTaskExec.isListOEV1alpha1SPC() {
+		op, err = m.k8sClient.ListOEV1alpha1SPCRaw(opts)
+	} else if m.metaTaskExec.isListOEV1alpha1CSP() {
+		op, err = m.k8sClient.ListOEV1alpha1CSPRaw(opts)
 	} else {
 		err = fmt.Errorf("failed to list k8s resources: meta task not supported: task details '%#v'", m.metaTaskExec.getTaskIdentity())
 	}
