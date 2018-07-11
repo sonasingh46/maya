@@ -20,6 +20,7 @@ import (
 	"github.com/golang/glog"
 	"fmt"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	"github.com/openebs/maya/pkg/storagepool"
 )
 
 
@@ -36,7 +37,7 @@ func DeleteCstorpool(key string) (error) {
 	// Fill the name in cstor pool object
 	// This object contains pool information for performing cstor pool deletion
 	cstorPool.ObjectMeta.Name =poolName
-	spcOps, err := NewCstorPoolOperation(cstorPool)
+	spcOps, err := storagepool.NewCstorPoolOperation(cstorPool)
 	if err != nil {
 		fmt.Println("NewCstorPoolDeletePeration Failed with following error")
 		fmt.Println(err)

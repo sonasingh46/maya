@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	"github.com/openebs/maya/pkg/storagepool"
 	"fmt"
 )
 
@@ -96,7 +97,7 @@ func poolCreateWorker(spcGot *apis.StoragePoolClaim) (error) {
 
 	// TODO : Select disks from nodes and push it to cstor pool cr object
 
-	cstorOps, err := NewCstorPoolOperation(cstorPool)
+	cstorOps, err := storagepool.NewCstorPoolOperation(cstorPool)
 	if err != nil {
 		fmt.Println("NewCstorPoolOPeration Failed with following error")
 		fmt.Println(err)
