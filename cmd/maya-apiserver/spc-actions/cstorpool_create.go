@@ -17,73 +17,72 @@ limitations under the License.
 package cstorpool
 
 import (
-	"fmt"
+	"errors"
 	"github.com/golang/glog"
 	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
-	//"k8s.io/client-go/tools/clientcmd"
-	//"k8s.io/client-go/kubernetes"
 	"github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
-	"strconv"
+	"fmt"
 )
 
 func CreateCstorpool(spcGot *apis.StoragePoolClaim) (error) {
-	// Business logic for creation of cstor pool cr
-	maxPool := spcGot.Spec.MaxPools
-	// Convert maxPool which is a string type to integer type
-	maxPoolCount, err := strconv.Atoi(maxPool)
-	if err != nil {
-		fmt.Println("conversion of max pool count failed : ", err)
-		return err
+
+	// Check wether the spc object has been processed for cstor pool creation
+	if(spcGot.Status.Phase=="online"){
+		return errors.New("Pool Already Exsists")
 	}
 	poolType := spcGot.Spec.PoolSpec.PoolType
 	if(poolType==""){
-		fmt.Println("aborting cstor pool create operation as no poolType specified")
-		return fmt.Errorf("error")
+		return errors.New("aborting cstor pool create operation as no poolType specified")
 	}
+
 	diskList := spcGot.Spec.Disks.DiskList
 	if(len(diskList)==0){
-		fmt.Println("aborting cstor pool create operation as no disk specified")
-		return fmt.Errorf("error")
+		return errors.New("aborting cstor pool create operation as no disk specified")
 	}
-	// Handle max pool count invalid inputs
-	if maxPoolCount <= 0 {
-		fmt.Println("aborting cstor pool create operation as pool count is not greater then ", maxPoolCount)
-		return fmt.Errorf("error")
+	err:=poolCreateWorker(spcGot)
+
+	if err!=nil{
+		return err
 	}
-	//cstorPoolCreator(spcGot)
-	// Launch as many cstorPoolCreator go routines as maxPoolCount so as to start parallel creation of cstor pool CR
-	for poolCount := 0; poolCount < maxPoolCount; poolCount++ {
-		go cstorPoolCreator(spcGot, poolCount)
-	}
+
 	return nil
 }
 
 // function that creates a cstorpool CR
-func cstorPoolCreator(spcGot *apis.StoragePoolClaim, nodeIndex int) {
-	fmt.Println("Creation of cstor pool CR initiated Now Image.1")
-	fmt.Println("Creating cstorpool cr for spc %s via CASTemplate", spcGot.ObjectMeta.Name)
-	// Wether business logic will add some information other then extracted from spc for cstropool cr creation?
+func poolCreateWorker(spcGot *apis.StoragePoolClaim) (error) {
+	fmt.Println("Creation of cstor pool CR initiated Now")
+	//fmt.Println("Creating cstorpool cr for spc %s via CASTemplate", spcGot.ObjectMeta.Name)
+	glog.Infof("Creating cstorpool cr for spc %s via CASTemplate", spcGot.ObjectMeta.Name)
+
 	// Create an empty cstor pool object
+	// This object will be filled in with some details that will be required by CAS Engine to create actual
+	// cstor pool cr object in kubernetes.
+	// As part of building the cstor pool object some of the details that are getting filled in may not be present
+	// in actual object in kubernetes. These kind of details are specific to CAS Engine usage only.
 	cstorPool := &v1alpha1.CStorPool{}
 
-	//Generate name using the prefix of StoragePoolClaim name and nodename hash
+	//Generate name using the prefix of StoragePoolClaim name
 	cstorPool.ObjectMeta.Name = spcGot.Name
-	// cstorPool.ObjectMeta.Name = spcGot.Name + "-" + spcGot.Spec.NodeSelector[nodeIndex]
 
 	// Add Pooltype specification
 	cstorPool.Spec.PoolSpec.PoolType = spcGot.Spec.PoolSpec.PoolType
 
-	// Fetch castemplate from spc object( we need not fetch it)
+	// Fetch castemplate from spc object
 	castName := spcGot.Annotations[string(v1alpha1.CASTemplateCVK)]
+
 	// make a map that should contain the castemplate name
 	mapCastName := make(map[string]string)
+
 	// Fill the map with castemplate name
 	mapCastName[string(v1alpha1.CASTemplateCVK)] = castName
+
 	// Push the map to cstor pool cr object
+	// This Annotation will however will not be present in actual object
 	cstorPool.Annotations = mapCastName
 
 	mapLabels := make(map[string]string)
 	// Push storage pool claim name to cstor pool cr object as a label
+	// This label will be present in the actual object
 	mapLabels[string(v1alpha1.StoragePoolClaimCVK)] = spcGot.Name
 
 	// Add init status
@@ -109,4 +108,5 @@ func cstorPoolCreator(spcGot *apis.StoragePoolClaim, nodeIndex int) {
 	} else {
 		glog.Infof("cas template based cstorpool created successfully: name '%s'", cstorPoolObject.Name)
 	}
+	return nil
 }

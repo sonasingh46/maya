@@ -30,8 +30,9 @@ import (
 type StoragePoolClaim struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
 	Spec StoragePoolClaimSpec `json:"spec"`
+	Status StoragePoolClaimStatus `json:"status"`
+
 }
 
 // StoragePoolClaimSpec is the spec for a StoragePoolClaimSpec resource
@@ -48,6 +49,10 @@ type StoragePoolClaimSpec struct {
 	PoolSpec CStorPoolAttr `json:"poolSpec"`
 }
 
+// StoragePoolClaim is for handling status of pool.
+type StoragePoolClaimStatus struct {
+	Phase string `json:"phase"`
+}
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +resource:path=storagepoolclaims
 

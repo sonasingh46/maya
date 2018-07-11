@@ -676,6 +676,12 @@ func (k *K8sClient) PatchExtnV1B1DeploymentAsRaw(name string, patchType types.Pa
 	return
 }
 
+// PatchOEV1alpha1SPCAsRaw patches the SPC object with the provided patches
+func (k *K8sClient) PatchOEV1alpha1SPCAsRaw(name string, patchType types.PatchType, patches []byte) (result *api_oe_v1alpha1.StoragePoolClaim, err error) {
+	result, err = k.oecs.OpenebsV1alpha1().StoragePoolClaims().Patch(name,patchType,patches)
+	return
+}
+
 // DeleteExtnV1B1Deployment deletes the K8s Deployment with the provided name
 func (k *K8sClient) DeleteExtnV1B1Deployment(name string) error {
 	dops := k.extnV1B1DeploymentOps()

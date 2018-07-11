@@ -26,15 +26,23 @@ import (
 // converge the two. It then updates the Status block of the spcPoolUpdated resource
 // with the current status of the resource.
 func (c *Controller) syncHandler(key, operation string) error {
-	//glog.Infof("at sync handler")
+	// getSpcResource will take a key as argument which conatins the namespace/name or simply name
+	// of the object and will fetch the object.
 	spcGot, err := c.getSpcResource(key)
 	if err != nil {
 		return err
 	}
+	// Call the spcEventHandler which will take spc object , key(namespace/name of object) and type of operation we need to to for storage pool
+	// Type of operation for storage pool e.g. create, delete etc.
 	status, err := c.spcEventHandler(operation, spcGot, key)
-	if status == "Igonre" {
+	if status == "ignore" {
+		glog.Warning("None of the SPC handler was executed")
 		return nil
 	}
+	if err !=nil{
+		return err
+	}
+
 	return nil
 }
 
@@ -42,32 +50,34 @@ func (c *Controller) syncHandler(key, operation string) error {
 func (c *Controller) spcEventHandler(operation string, spcGot *apis.StoragePoolClaim, key string) (string, error) {
 	switch operation {
 	case "add":
-		// TO-DO : Handle Business Logic
-		// Query for this spc object
-		glog.Info("Create SPC Event Handler1")
-		// Pass spc object from here to the function
+		// CreateCstorpool function will create the storage pool
 		err := cstorpool.CreateCstorpool(spcGot)
 		if err !=nil{
-			fmt.Println("Could Not Create cstor pool")
+			glog.Error("cstor pool could not be created:",err)
+			return "add", err
 		}
+		return "add",nil
 		break
 
 	case "update":
 		// TO-DO : Handle Business Logic
-		glog.Info("Update SPC Event Handler")
+		// Hook Update Business Logic Here
+		return "update",nil
 		break
 
 	case "delete":
 		err := cstorpool.DeleteCstorpool(key)
 		if err !=nil{
-			fmt.Println("Could Not Delete cstor pool")
+			glog.Error("cstor pool could not be deleted:",err)
+			return "delete", err
 		}
+		return "delete", nil
 		break
 	default:
-		// Ignore
+		// opeartion with tag other than add,update and delete are ignored.
 		break
 	}
-	return "Ignore", nil
+	return "ignore", nil
 }
 
 // enqueueSpc takes a SPC resource and converts it into a namespace/name

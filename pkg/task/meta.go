@@ -250,6 +250,9 @@ func (m *metaTaskExecutor) isDeleteCoreV1Service() bool {
 func (m *metaTaskExecutor) isDeleteOEV1alpha1CSP() bool {
 	return m.identifier.isOEV1alpha1CstorPool() && m.isDelete()
 }
+func (m *metaTaskExecutor) isPatchOEV1alpha1SPC() bool {
+	return m.identifier.isOEV1alpha1SPC() && m.isPatch()
+}
 func (m *metaTaskExecutor) isListCoreV1Pod() bool {
 	return m.identifier.isCoreV1Pod() && m.isList()
 }

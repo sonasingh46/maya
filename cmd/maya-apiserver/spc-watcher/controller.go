@@ -33,21 +33,6 @@ import (
 
 const controllerAgentName = "spc-controller"
 
-const (
-	// SuccessSynced is used as part of the Event 'reason' when a SPC is synced
-	SuccessSynced = "Synced"
-	// ErrResourceExists is used as part of the Event 'reason' when a SPC fails
-	// to sync due to a Deployment of the same name already existing.
-	ErrResourceExists = "ErrResourceExists"
-
-	// MessageResourceExists is the message used for Events when a resource
-	// fails to sync due to a Deployment already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by Foo"
-	// MessageResourceSynced is the message used for an Event fired when a SPC
-	// is synced successfully
-	MessageResourceSynced = "SPC synced successfully"
-)
-
 // Controller is the controller implementation for SPC resources
 type Controller struct {
 	// kubeclientset is a standard kubernetes clientset
@@ -102,15 +87,21 @@ func NewController(
 	}
 
 	glog.Info("Setting up event handlers")
-	// Instantiating QueueLoad before entering workqueue.
+	// Instantiating QueueLoad before pushing it to workqueue.
 	q := QueueLoad{}
-	// Set up an event handler for when SPC resources change
 
+	// Set up an event handler for when SPC resources change
 	spcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			q.Operation = "add"
 			controller.enqueueSpc(obj, q)
 		},
+
+		// Informer will send update event along with object in following cases:
+		// 1. In case the object is update ( Change of Resource Version)
+		// 2. In case the object is deleted
+		// 3. After every fixed amount of time which is know as reSync Period.
+		//    ReSync period can be set to values we want. It can help in reconiciliation.
 		UpdateFunc: func(old, new interface{}) {
 			newSpc := new.(*apis.StoragePoolClaim)
 			oldSpc := old.(*apis.StoragePoolClaim)
@@ -119,18 +110,21 @@ func NewController(
 				q.Operation = "delete"
 			} else {
 			if(newSpc.ObjectMeta.ResourceVersion==oldSpc.ObjectMeta.ResourceVersion){
-				q.Operation = "sync"
+				// If Resource Version is same it means the object has not got updated.
+				q.Operation = "ignore"
 			} else {
-				// How do we decide which fields have changed in new object as compared to old object
+				// To-DO
+				// Implement Logic for Update of SPC object
 				q.Operation = "update"
 			}
 			}
 			controller.enqueueSpc(new, q)
 		},
 		DeleteFunc: func(obj interface{}) {
-			// obj is the delete object
-			// If the use case is to utilize the content of deleted object, a hadler should be hooked in here.
-			// Workqueue stores key of object and the object cannot be retrieved later
+			// obj is the object to be deleted
+			// If the use case is to utilize the content of deleted object, a handler should be hooked in here only.
+			// Workqueue stores key of object and the object cannot be retrieved later.
+			// One of the alternative is to use delete index cache.
 		},
 	})
 
@@ -140,9 +134,7 @@ func NewController(
 // IsDestroyEvent is to check if the call is for SPC delete.
 func IsDeleteEvent(spc *apis.StoragePoolClaim) bool {
 	if spc.ObjectMeta.DeletionTimestamp != nil {
-		//glog.Infof("spc delete event")
 		return true
 	}
-	//glog.Infof("spc delete event")
 	return false
 }

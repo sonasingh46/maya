@@ -50,11 +50,6 @@ func NewCstorPoolOperation(cstorPool *v1alpha1.CStorPool) (*cstorPoolOperation, 
 		return nil, fmt.Errorf("failed to instantiate cstorPool operation: nil cstorPool was provided")
 	}
 
-	// Clustered Scope ? Do we need a namespace ??
-	//if len(cstorPool.Namespace) == 0 {
-	//	return nil, fmt.Errorf("failed to instantiate cstorPool operation: missing run namespace")
-	//}
-
 	kc, err := m_k8s_client.NewK8sClient(cstorPool.Namespace)
 	if err != nil {
 		return nil, err

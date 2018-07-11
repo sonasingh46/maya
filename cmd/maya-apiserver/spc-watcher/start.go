@@ -46,17 +46,20 @@ func Start() {
 	if err != nil {
 		glog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
-
+	// Building Kubernetes Clientset
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
+	// Building OpenEBS Clientset
 	openebsClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("Error building example clientset: %s", err.Error())
+		glog.Fatalf("Error building openebs clientset: %s", err.Error())
 	}
 
+	// To-DO
+	// Put Some good description about informers
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	spcInformerFactory := informers.NewSharedInformerFactory(openebsClient, time.Second*30)
 
@@ -66,7 +69,9 @@ func Start() {
 
 	go kubeInformerFactory.Start(stopCh)
 	go spcInformerFactory.Start(stopCh)
-	if err = controller.Run(1, stopCh); err != nil {
+
+	// Threadiness defines the nubmer of workers to be launched in Run function
+	if err = controller.Run(2, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %s", err.Error())
 	}
 }

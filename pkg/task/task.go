@@ -365,6 +365,8 @@ func (m *taskExecutor) ExecuteIt() (err error) {
 		err = m.deleteCoreV1Service()
 	} else if m.metaTaskExec.isDeleteOEV1alpha1CSP() {
 		err = m.deleteOEV1alpha1CSP()
+	} else if m.metaTaskExec.isPatchOEV1alpha1SPC() {
+		err = m.patchOEV1alpha1SPC()
 	} else if m.metaTaskExec.isGetOEV1alpha1SP() {
 		err = m.getOEV1alpha1SP()
 	} else if m.metaTaskExec.isGetOEV1alpha1SPC() {
@@ -497,6 +499,34 @@ func (m *taskExecutor) putExtnV1B1Deploy() (err error) {
 // The patch specifications as configured in the RunTask
 func (m *taskExecutor) patchAppsV1B1Deploy() (err error) {
 	err = fmt.Errorf("patchAppsV1B1Deploy is not implemented")
+	return
+}
+
+// patchOEV1alpha1SPC will patch a SPC object in a kubernetes cluster.
+// The patch specifications as configured in the RunTask
+func (m *taskExecutor) patchOEV1alpha1SPC() (err error) {
+	patch, err := asTaskPatch("OEV1alpha1SPCPatch", m.runtask.TaskYml, m.templateValues)
+	if err != nil {
+		return
+	}
+
+	pe, err := newTaskPatchExecutor(patch)
+	if err != nil {
+		return
+	}
+
+	raw, err := pe.toJson()
+	if err != nil {
+		return
+	}
+
+	// patch the spc
+	spc, err := m.k8sClient.PatchOEV1alpha1SPCAsRaw(m.objectName, pe.patchType(), raw)
+	if err != nil {
+		return
+	}
+
+	util.SetNestedField(m.templateValues, spc, string(v1alpha1.CurrentJsonResultTLP))
 	return
 }
 

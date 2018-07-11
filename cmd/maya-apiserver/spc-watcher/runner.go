@@ -40,6 +40,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	}
 	glog.Info("Starting SPC workers")
 	// Launch worker to process SPC resources
+	// Threadiness will decide the number of workers you want to launch to process work items from queue
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
