@@ -28,6 +28,23 @@ func (s *HTTPServer) volumeSpecificRequest(resp http.ResponseWriter, req *http.R
 
 	switch req.Method {
 	case "PUT", "POST":
+		// swagger:route POST /volumes/ Volumes CreateVolume
+		// Create Volume.
+		//
+		// Create a volume.
+		//
+		//     Consumes:
+		//     - application/json
+		//
+		//     Produces:
+		//     - application/json
+		//
+		//     Schemes: http
+		//
+		//     Responses:
+		//       400: badRequest
+		//       500: serverError
+		//       200: VolumeCreated
 		return s.volumeAdd(resp, req)
 	case "GET":
 		return s.volumeSpecificGetRequest(resp, req)
@@ -49,12 +66,61 @@ func (s *HTTPServer) volumeSpecificGetRequest(resp http.ResponseWriter, req *htt
 	switch {
 
 	case strings.Contains(path, "/info/"):
+		// swagger:route GET /volumes/info/{name} Volumes GetSpecificVolume
+		// List a specific volume.
+		//
+		// Get a specific volume.
+		//
+		//     Consumes:
+		//     - application/json
+		//
+		//     Produces:
+		//     - application/json
+		//
+		//     Schemes: http
+		//
+		//     Responses:
+		//       500: serverError
+		//		 404: noSuchVolume
+		//       200: SpecificVolumeSummary
 		volName := strings.TrimPrefix(path, "/info/")
 		return s.volumeRead(resp, req, volName)
 	case strings.Contains(path, "/delete/"):
+		// swagger:route GET /volumes/delete/{name} Volumes DeleteVolume
+		// Deletes volumes.
+		//
+		// This will delete available volumes.
+		//
+		//     Consumes:
+		//     - application/json
+		//
+		//     Produces:
+		//     - application/json
+		//
+		//     Schemes: http
+		//
+		//     Responses:
+		//       200: successDelete
+		//		 404: noSuchVolume
+		//       500: serverError
 		volName := strings.TrimPrefix(path, "/delete/")
 		return s.volumeDelete(resp, req, volName)
 	case path == "/":
+		// swagger:route GET /volumes/ Volumes GetVolume
+		//     List volumes
+		//
+		//     List all the volumes.
+		//     Consumes:
+		//     - application/json
+		//
+		//     Produces:
+		//     - application/json
+		//
+		//     Schemes: http
+		//
+		//     Responses:
+		//       500: serverError
+		//       200: volumeSummary
 		return s.volumeList(resp, req)
 	default:
 		return nil, CodedError(405, ErrInvalidMethod)

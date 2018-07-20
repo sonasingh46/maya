@@ -22,11 +22,62 @@ func (s *HTTPServer) snapshotSpecificRequest(resp http.ResponseWriter, req *http
 
 	switch {
 	case strings.Contains(path, "/create/"):
+		// swagger:route POST /snapshots/create/ Snapshots CreateSnapshot
+		//     Create Snapshot
+		//
+		//     Create snapshot for a volume.
+		//     Consumes:
+		//     - application/json
+		//
+		//     Produces:
+		//     - application/json
+		//
+		//     Schemes: http
+		//
+		//     Responses:
+		//       200: snapshotCreated
+		//       400: badRequest
+		//		 404: noSuchVolume
+		//       500: serverError
 		return s.snapshotCreate(resp, req)
 	case strings.Contains(path, "/revert/"):
+		// swagger:route PUT /snapshots/revert/ Snapshots RevertSnapshot
+		//     Revert Snapshots
+		//
+		//     Revert snapshots for a volume.
+		//     Consumes:
+		//     - application/json
+		//
+		//     Produces:
+		//     - application/json
+		//     - application/x-protobuf
+		//
+		//     Schemes: http
+		//
+		//     Responses:
+		//       200: snapshotReverted
+		//       400: badRequest
+		//       404: noSuchVolume
+		//       500: serverError
 		return s.snapshotRevert(resp, req)
 	case strings.Contains(path, "/list"):
 		volName := strings.TrimPrefix(path, "/list/")
+		// swagger:route GET /snapshots/list/{volumeName}  Snapshots GetSnapshot
+		//     List Snapshots
+		//
+		//     List snapshots for a volume.
+		//     Consumes:
+		//     - application/json
+		//
+		//     Produces:
+		//     - application/json
+		//
+		//     Schemes: http
+		//
+		//     Responses:
+		//       200: snapshotSummary
+		//       400: badRequest
+		//       500: serverError
 		return s.snapshotList(resp, req, volName)
 	default:
 		return nil, CodedError(405, ErrInvalidMethod)

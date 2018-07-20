@@ -1,0 +1,24 @@
+{
+  "info": {
+    "x-logo": {
+      "url": "/img/openebslogo.png",
+      "backgroundColor": "#FFFFFF"
+    }
+  },
+"externalDocs": {
+		"description": "Back To OpenEBS Documentation",
+		"url": "https://docs.openebs.io"
+	},
+"tags": [
+		{
+			"name": "Volumes",
+			"x-displayName": "Volumes",
+			"description": "A volume in OpenEBS has the same design as a pod in K8s.\nAlternatively,a volume in OpenEBS can be considered as a StoragePod..\n"
+		},
+		{
+			"name": "Snapshots",
+			"x-displayName": "Snapshots",
+			"description": "VolumeSnapshot is volume snapshot object accessible to the user. Upon successful creation of the actual\n snapshot by the volume provider it is bound to the corresponding Volume Snapshot Data through the Volume Snapshot Spec"
+		}
+	]
+}
