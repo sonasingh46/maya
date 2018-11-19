@@ -943,6 +943,12 @@ func (k *K8sClient) PatchOEV1alpha1SPCAsRaw(name string, patchType types.PatchTy
 	return
 }
 
+// PatchOEV1alpha1CSPAsRaw patches the CSP object with the provided patches.
+func (k *K8sClient) PatchOEV1alpha1CSPAsRaw(name string, patchType types.PatchType, patches []byte) (result *api_oe_v1alpha1.CStorPool, err error) {
+	result, err = k.oecs.OpenebsV1alpha1().CStorPools().Patch(name, patchType, patches)
+	return
+}
+
 // PatchExtnV1B1DeploymentAsRaw patches the K8s Deployment with the provided patches
 func (k *K8sClient) PatchExtnV1B1DeploymentAsRaw(name string, patchType types.PatchType, patches []byte) (result []byte, err error) {
 	result, err = k.cs.ExtensionsV1beta1().RESTClient().Patch(patchType).

@@ -320,3 +320,65 @@ func TestSyncHandler(t *testing.T) {
 		})
 	}
 }
+
+//func TestCspPatch(t *testing.T) {
+//	// fakeKubeClient, fakeOpenebsClient, kubeInformerFactory, and openebsInformerFactory
+//	// are arguments that is expected by the NewController function.
+//	fakeKubeClient := fake.NewSimpleClientset()
+//	fakeOpenebsClient := openebsFakeClientset.NewSimpleClientset()
+//	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(fakeKubeClient, time.Second*30)
+//	openebsInformerFactory := informers.NewSharedInformerFactory(fakeOpenebsClient, time.Second*30)
+//	// Instantiate the controller by passing the valid arguments.
+//	controller := NewController(fakeKubeClient, fakeOpenebsClient, kubeInformerFactory,
+//		openebsInformerFactory)
+//	// Create 5 fake CSP objects
+//	controller.FakeCspCreator("pool1")
+//	tests := map[string]struct {
+//		cspName string
+//		payLoad *apis.NodeStatus
+//	}{
+//		"case #1": {
+//			cspName: "pool1",
+//			payLoad: &apis.NodeStatus{
+//				"pool1",
+//				v1.NodePending,
+//			},
+//		},
+//	}
+//	for name, test := range tests {
+//
+//		t.Run(name, func(t *testing.T) {
+//			csp, err := controller.cspPatch(test.cspName, test.payLoad)
+//			if err != nil {
+//				t.Error("Some error occured", err)
+//			} else {
+//				fmt.Println("Successful---->", csp.Status.Phase)
+//			}
+//		})
+//	}
+//}
+//func (c *Controller) FakeCspCreator(cspName string) {
+//	cspObject := &apis.CStorPool{
+//		TypeMeta: metav1.TypeMeta{},
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: cspName,
+//		},
+//		Spec: apis.CStorPoolSpec{
+//			Disks: apis.DiskAttr{
+//				DiskList: []string{"/tmp/img2.img"},
+//			},
+//			PoolSpec: apis.CStorPoolAttr{
+//				CacheFile:        "/tmp/pool1.cache",
+//				PoolType:         "striped",
+//				OverProvisioning: false,
+//			},
+//		},
+//		Status: apis.CStorPoolStatus{Phase: "init"},
+//	}
+//	csp, err := c.clientset.OpenebsV1alpha1().CStorPools().Create(cspObject)
+//	if err != nil {
+//		glog.Error("Some error occured in csp object creation", err)
+//	} else {
+//		fmt.Println("Phase of created csp", csp.Status.Phase)
+//	}
+//}
