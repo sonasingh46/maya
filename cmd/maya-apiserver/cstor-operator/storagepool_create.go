@@ -24,6 +24,7 @@ import (
 	"github.com/openebs/maya/pkg/client/k8s"
 	"github.com/openebs/maya/pkg/storagepool"
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type poolCreateConfig struct {
@@ -153,6 +154,11 @@ func (newClientSet *clientSet) casPoolBuilder(casPool *apis.CasPool, spc *apis.S
 				Name:        disk,
 				InUseByPool: true,
 			}
+			devID, err := newClientSet.getDeviceId(disk.Name)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to get dev is for disk %s for spc %s", disk.Name, spc.Name)
+			}
+			disk.DeviceID = devID
 			diskList = append(diskList, disk)
 			group = apis.DiskGroup{
 				Item: diskList,
@@ -171,6 +177,11 @@ func (newClientSet *clientSet) casPoolBuilder(casPool *apis.CasPool, spc *apis.S
 				Name:        nodeDisks.Disks.Items[i+j],
 				InUseByPool: true,
 			}
+			devID, err := newClientSet.getDeviceId(disk.Name)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to get dev is for disk %s for spc %s", disk.Name, spc.Name)
+			}
+			disk.DeviceID = devID
 			diskList = append(diskList, disk)
 		}
 		group = apis.DiskGroup{
@@ -179,4 +190,18 @@ func (newClientSet *clientSet) casPoolBuilder(casPool *apis.CasPool, spc *apis.S
 		casPool.DiskList = append(casPool.DiskList, group)
 	}
 	return casPool, nil
+}
+
+func (newClientSet *clientSet) getDeviceId(diskName string) (string, error) {
+	var DeviceID string
+	disk, err := newClientSet.oecs.OpenebsV1alpha1().Disks().Get(diskName, v1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	if len(disk.Spec.DevLinks) != 0 && len(disk.Spec.DevLinks[0].Links) != 0 {
+		DeviceID = disk.Spec.DevLinks[0].Links[0]
+	} else {
+		DeviceID = disk.Spec.Path
+	}
+	return DeviceID, nil
 }

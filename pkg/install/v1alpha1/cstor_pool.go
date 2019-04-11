@@ -146,7 +146,8 @@ spec:
         - disk:
           {{- range $ki, $disk := $v.disk }}
           - name: {{$disk.name}} 
-            inUseByPool: true 
+            inUseByPool: true
+            deviceID: {{$disk.deviceID}}
           {{- end }}
         {{- end }}
       poolSpec:

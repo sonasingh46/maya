@@ -134,6 +134,13 @@ func NewCStorPoolController(
 			if IsDeletionFailedBefore(newCStorPool) || IsErrorDuplicate(newCStorPool) {
 				return
 			}
+			if isOperationQueueEmpty(newCStorPool) {
+				q.Operation = common.QOpDiskOps
+				glog.Infof("cStorPool disk ops event : %v, %v ", newCStorPool.ObjectMeta.Name, string(newCStorPool.ObjectMeta.UID))
+				controller.recorder.Event(newCStorPool, corev1.EventTypeNormal, string(common.SuccessSynced), string(common.MessageDestroySynced))
+				controller.enqueueCStorPool(newCStorPool, q)
+				return
+			}
 			// Periodic resync will send update events for all known CStorPool.
 			// Two different versions of the same CStorPool will always have different RVs.
 			if newCStorPool.ResourceVersion == oldCStorPool.ResourceVersion {
@@ -144,10 +151,6 @@ func NewCStorPoolController(
 			} else if IsDestroyEvent(newCStorPool) {
 				q.Operation = common.QOpDestroy
 				glog.Infof("cStorPool Destroy event : %v, %v ", newCStorPool.ObjectMeta.Name, string(newCStorPool.ObjectMeta.UID))
-				controller.recorder.Event(newCStorPool, corev1.EventTypeNormal, string(common.SuccessSynced), string(common.MessageDestroySynced))
-			} else if IsDiskHashCahnged(newCStorPool) {
-				q.Operation = common.QOpDiskOps
-				glog.Infof("cStorPool disk ops event : %v, %v ", newCStorPool.ObjectMeta.Name, string(newCStorPool.ObjectMeta.UID))
 				controller.recorder.Event(newCStorPool, corev1.EventTypeNormal, string(common.SuccessSynced), string(common.MessageDestroySynced))
 			} else {
 				q.Operation = common.QOpModify
@@ -181,4 +184,13 @@ func (c *CStorPoolController) enqueueCStorPool(obj *apis.CStorPool, q common.Que
 	}
 	q.Key = key
 	c.workqueue.AddRateLimited(q)
+}
+
+func isOperationQueueEmpty(csp *apis.CStorPool) bool {
+	if len(csp.Operations) >= 1 {
+		if csp.Operations[0].Status != "Done" {
+			return true
+		}
+	}
+	return false
 }

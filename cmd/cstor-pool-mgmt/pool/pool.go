@@ -58,6 +58,16 @@ const (
 // RunnerVar the runner variable for executing binaries.
 var RunnerVar util.Runner
 
+// Predicates type is the type for predicate functions.
+type Predicates func(poolName string, deviceID []string) (err error)
+
+var ExpansionPredicates = map[string]Predicates{
+	string(apis.PoolTypeStripedCPV):  ExpandStripedPool,
+	string(apis.PoolTypeMirroredCPV): ExpandMirroredPool,
+	string(apis.PoolTypeRaidzCPV):    ExpandRaidzPool,
+	string(apis.PoolTypeRaidz2CPV):   ExpandRaidz2Pool,
+}
+
 // ImportPool imports cStor pool if already present.
 func ImportPool(cStorPool *apis.CStorPool, cachefileFlag bool) error {
 	importAttr := importPoolBuilder(cStorPool, cachefileFlag)
@@ -132,6 +142,75 @@ func createPoolBuilder(cStorPool *apis.CStorPool, diskList []string) []string {
 	}
 
 	return createAttr
+}
+
+// ExpandStripedPool expands the created striped pool -- (Pool Expansion).
+func ExpandStripedPool(poolName string, deviceID []string) error {
+	expandPoolStr := []string{"add", "-f", poolName}
+	expandPoolStr = append(expandPoolStr, deviceID...)
+	stdoutStderr, err := RunnerVar.RunCombinedOutput(PoolOperator, expandPoolStr...)
+	if err != nil {
+		glog.Errorf("Unable to expand striped pool %s: %v", poolName, string(stdoutStderr))
+		return err
+	}
+	return nil
+}
+
+// ExpandMirroredPool expands the created mirrored pool -- (Pool Expansion).
+func ExpandMirroredPool(poolName string, deviceIDList []string) error {
+	expandPoolAttr := []string{"add", "-f", poolName}
+
+	for i, deviceID := range deviceIDList {
+		if i%defaultGroupSize[string(apis.PoolTypeMirroredCPV)] == 0 {
+			expandPoolAttr = append(expandPoolAttr, poolTypeCommand[string(apis.PoolTypeMirroredCPV)])
+		}
+		expandPoolAttr = append(expandPoolAttr, deviceID)
+	}
+
+	stdoutStderr, err := RunnerVar.RunCombinedOutput(PoolOperator, expandPoolAttr...)
+	if err != nil {
+		glog.Errorf("Unable to expand mirrored pool %s: %v", poolName, string(stdoutStderr))
+		return err
+	}
+	return nil
+}
+
+// ExpandRaidzPool expands the created raidz1 pool -- (Pool Expansion).
+func ExpandRaidzPool(poolName string, deviceIDList []string) error {
+	expandPoolAttr := []string{"add", "-f", poolName}
+
+	for i, deviceID := range deviceIDList {
+		if i%defaultGroupSize[string(apis.PoolTypeRaidzCPV)] == 0 {
+			expandPoolAttr = append(expandPoolAttr, poolTypeCommand[string(apis.PoolTypeRaidzCPV)])
+		}
+		expandPoolAttr = append(expandPoolAttr, deviceID)
+	}
+
+	stdoutStderr, err := RunnerVar.RunCombinedOutput(PoolOperator, expandPoolAttr...)
+	if err != nil {
+		glog.Errorf("Unable to expand raidz pool %s: %v", poolName, string(stdoutStderr))
+		return err
+	}
+	return nil
+}
+
+// ExpandRaidz2Pool expands the created raidz2 pool -- (Pool Expansion).
+func ExpandRaidz2Pool(poolName string, deviceIDList []string) error {
+	expandPoolAttr := []string{"add", "-f", poolName}
+
+	for i, deviceID := range deviceIDList {
+		if i%defaultGroupSize[string(apis.PoolTypeRaidz2CPV)] == 0 {
+			expandPoolAttr = append(expandPoolAttr, poolTypeCommand[string(apis.PoolTypeRaidz2CPV)])
+		}
+		expandPoolAttr = append(expandPoolAttr, deviceID)
+	}
+
+	stdoutStderr, err := RunnerVar.RunCombinedOutput(PoolOperator, expandPoolAttr...)
+	if err != nil {
+		glog.Errorf("Unable to expand raidz2 pool %s: %v", poolName, string(stdoutStderr))
+		return err
+	}
+	return nil
 }
 
 // CheckValidPool checks for validity of CStorPool resource.
@@ -323,6 +402,7 @@ func CheckForZreplContinuous(ZreplRetryInterval time.Duration) {
 			//even though we imported pool, it disappeared (may be due to zrepl container crashing).
 			// so we need to reimport.
 			if PoolAddEventHandled && strings.Contains(string(out), StatusNoPoolsAvailable) {
+				glog.Errorf("zrepl not available : %v", out)
 				break
 			}
 			time.Sleep(ZreplRetryInterval)

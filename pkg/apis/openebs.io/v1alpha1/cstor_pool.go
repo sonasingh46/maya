@@ -31,8 +31,16 @@ type CStorPool struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CStorPoolSpec   `json:"spec"`
-	Status CStorPoolStatus `json:"status"`
+	Spec       CStorPoolSpec    `json:"spec"`
+	Status     CStorPoolStatus  `json:"status"`
+	Operations []CstorOperation `json:"operations"`
+}
+
+type CstorOperation struct {
+	Action   string   `json:"action"`
+	NewDisks []string `json:"newDisk"`
+	OldDisk  []string `json:"oldDisk"`
+	Status   string   `json:status`
 }
 
 // CStorPoolSpec is the spec listing fields for a CStorPool resource.
@@ -47,6 +55,7 @@ type DiskGroup struct {
 
 type CspDisk struct {
 	Name        string `json:"name"`
+	DeviceID    string `json:"deviceID"`
 	InUseByPool bool   `json:"inUseByPool"`
 }
 
@@ -85,6 +94,9 @@ const (
 	CStorPoolStatusError CStorPoolPhase = "Error"
 	// CStorPoolStatusDeletionFailed ensures the resource deletion has failed.
 	CStorPoolStatusDeletionFailed CStorPoolPhase = "DeletionFailed"
+
+	// CStorPoolStatusExpansionFailed ensures the resource deletion has failed.
+	CStorPoolStatusExpansionFailed CStorPoolPhase = "ExpansionFailed"
 	// CStorPoolStatusInvalid ensures invalid resource.
 	CStorPoolStatusInvalid CStorPoolPhase = "Invalid"
 	// CStorPoolStatusErrorDuplicate ensures error due to duplicate resource.

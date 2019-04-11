@@ -75,6 +75,8 @@ const (
 	MessageResourceSyncFailure EventReason = "Resource sync failed:"
 	// FailureDestroy holds status for corresponding failed destroy resource.
 	FailureDestroy EventReason = "FailDestroy"
+	// FailureExpand holds status for corresponding failed expansion of pool.
+	FailureExpand EventReason = "FailureExpand"
 	// MessageResourceFailDestroy holds message for corresponding failed destroy resource.
 	MessageResourceFailDestroy EventReason = "Resource Destroy failed"
 	// FailureValidate holds status for corresponding failed validate resource.

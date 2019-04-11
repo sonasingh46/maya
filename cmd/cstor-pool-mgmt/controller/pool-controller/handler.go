@@ -112,6 +112,10 @@ func (c *CStorPoolController) cStorPoolEventHandler(operation common.QueueOperat
 		glog.Infof("Processing cStorPool Destroy event %v, %v", cStorPoolGot.ObjectMeta.Name, string(cStorPoolGot.GetUID()))
 		status, err := c.cStorPoolDestroyEventHandler(cStorPoolGot)
 		return status, err
+	case common.QOpDiskOps:
+		glog.Infof("Processing cStorPool Disk operation event %v, %v", cStorPoolGot.ObjectMeta.Name, string(cStorPoolGot.GetUID()))
+		err := c.cStorPoolOpsEventHandler(cStorPoolGot)
+		return string(cStorPoolGot.Status.Phase), err
 	case common.QOpSync:
 		// Check if pool is not imported/created earlier due to any failure or failure in getting lease
 		// try to import/create pool gere as part of resync.
@@ -147,7 +151,6 @@ func (c *CStorPoolController) cStorPoolAddEventHandler(cStorPoolGot *apis.CStorP
 		c.recorder.Event(cStorPoolGot, corev1.EventTypeWarning, string(common.FailureValidate), string(common.MessageResourceFailValidate))
 		return string(apis.CStorPoolStatusOffline), err
 	}
-	hash.Hash(cStorPoolGot.Spec.Group)
 	/* 	If pool is already present.
 	Pool CR status is online. This means pool (main car) is running successfully,
 	but watcher container got restarted.
@@ -236,7 +239,6 @@ func (c *CStorPoolController) cStorPoolAddEventHandler(cStorPoolGot *apis.CStorP
 			return string(apis.CStorPoolStatusOffline), err
 		}
 
-		c.putHashOnCsp(cStorPoolGot)
 		glog.Infof("Pool creation successful: %v", string(cStorPoolGot.GetUID()))
 		c.recorder.Event(cStorPoolGot, corev1.EventTypeNormal, string(common.SuccessCreated), string(common.MessageResourceCreated))
 		return string(apis.CStorPoolStatusOnline), nil
@@ -273,6 +275,37 @@ func (c *CStorPoolController) cStorPoolDestroyEventHandler(cStorPoolGot *apis.CS
 	}
 	return "", nil
 
+}
+
+func (c *CStorPoolController) cStorPoolOpsEventHandler(csp *apis.CStorPool) error {
+	if len(csp.Operations) < 1 {
+		return errors.New("No operation found in queue")
+	}
+	if isAddOperation(csp) {
+		err := c.AddOperationHandler(csp)
+		if err != nil {
+			return errors.Wrapf(err, "Add operation failed")
+		}
+	}
+	return nil
+}
+
+func isAddOperation(csp *apis.CStorPool) bool {
+	if csp.Operations[0].Action == "Add" {
+		return true
+	}
+	return false
+}
+
+func (c *CStorPoolController) AddOperationHandler(csp *apis.CStorPool) error {
+	deviceIDs := csp.Operations[0].NewDisks
+	err := pool.ExpansionPredicates[csp.Spec.PoolSpec.PoolType](string(pool.PoolPrefix)+string(csp.ObjectMeta.UID), deviceIDs)
+	if err != nil {
+		c.recorder.Event(csp, corev1.EventTypeWarning, string(common.FailureDestroy), string(common.MessageResourceFailDestroy))
+		return err
+	}
+	csp.Operations = append(csp.Operations[:0], csp.Operations[1:]...)
+	return nil
 }
 
 //  getPoolStatus is a wrapper that fetches the status of cstor pool.
@@ -438,101 +471,15 @@ func (c *CStorPoolController) putHashOnCsp(csp *apis.CStorPool) {
 	csp.Annotations[diskRefLabelKey] = diskHash
 }
 
-// TODO: Enahnce the following code which should handle disk addition and removal in CSP
-// TODO: Unit Test
-func (c *CStorPoolController) getDeviceId(diskName string) (string, error) {
-	var deviceID string
-	disk, err := c.clientset.OpenebsV1alpha1().Disks().Get(diskName, metav1.GetOptions{})
-	// TODO: Add context to error
-	if err != nil {
-		return "", err
-	}
-	if disk == nil {
-		return "", fmt.Errorf("Disk object %s not found", disk.Name)
-	}
-	if len(disk.Spec.DevLinks) != 0 && len(disk.Spec.DevLinks[0].Links) != 0 {
-		deviceID = disk.Spec.DevLinks[0].Links[0]
-	} else {
-		deviceID = disk.Spec.Path
-	}
-	return deviceID, nil
-}
-
-// TODO: Unit Test
-func (c *CStorPoolController) getDeviceIdList(diskNames []string) ([]string, error) {
-	var deviceIDs []string
-	for _, diskName := range diskNames {
-		gotDeviceID, err := c.getDeviceId(diskName)
-		// TODO: Add context to error
-		if err != nil {
-			return []string{""}, err
-		}
-		deviceIDs = append(deviceIDs, gotDeviceID)
-	}
-	return deviceIDs, nil
-}
-
 // TODO : Unit Test
 func (c *CStorPoolController) getDeviceIds(csp *apis.CStorPool) ([]string, error) {
-	var diskName []string
+	// TODO: Add error handling
+	var diskDeviceID []string
 	for _, group := range csp.Spec.Group {
 		for _, disk := range group.Item {
-			diskName = append(diskName, disk.Name)
+			diskDeviceID = append(diskDeviceID, disk.DeviceID)
 		}
 	}
-	deviceIDs, err := c.getDeviceIdList(diskName)
-	return deviceIDs, err
-}
 
-//
-//func (c *CStorPoolController)handleDiskChange(csp *apis.CStorPool) (error) {
-//	// CheckValidPool is to check if pool attributes are correct.
-//	diskDeviceIDs, err := c.getDeviceIds(csp)
-//	//TODO: Add context to error
-//	if err != nil {
-//		return err
-//	}
-//	// Check if pool exists
-//	poolName,err:=pool.GetPoolName()
-//	if err!=nil{
-//		return err
-//	}
-//	if len(poolName)==0{
-//		// Pool does not exist -- import the pool
-//
-//		status,err:=c.importPool(csp,true)
-//		if err!=nil{
-//			// Pool import failed
-//			err = pool.CreatePool(csp, diskDeviceIDs)
-//			return err
-//		}
-//		if status!=""{
-//			// Pool Import succeeded
-//		}
-//	}else {
-//		// Pool exists
-//		c.getNewerDisk()
-//	}
-//
-//}
-//
-//func (c *CStorPoolController)getNewerDisk()  {
-//	// Get Pool details -- find replacement candidates
-//	c.replaceDisk()
-//	// Get pool details -- find addition candidates
-//	c.addDisk()
-//	// Update the disk hash
-//	c.updateDiskHash()
-//}
-//
-//func (c *CStorPoolController)replaceDisk()  {
-//
-//}
-//
-//func (c *CStorPoolController)addDisk()  {
-//
-//}
-//
-//func (c *CStorPoolController)updateDiskHash()  {
-//
-//}
+	return diskDeviceID, nil
+}

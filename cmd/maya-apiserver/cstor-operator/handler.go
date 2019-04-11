@@ -52,6 +52,11 @@ var (
 	}
 )
 
+type DiskDetails struct {
+	DiskName string
+	DeviceID string
+}
+
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the spcPoolUpdated resource
 // with the current status of the resource.
@@ -391,11 +396,12 @@ func (do *DiskOperations) handleDiskAdditionHashChange() error {
 	return nil
 }
 
-func (do *DiskOperations) addDisk(nodeDisk map[string][]string) error {
+func (do *DiskOperations) addDisk(nodeDisk map[string][]DiskDetails) error {
 	defaultDiskCount := nodeselect.DefaultDiskCount[do.spc.Spec.PoolSpec.PoolType]
 	nodeCspMap := do.getCspNodeMap()
 	var newGroup apis.DiskGroup
 	var cspdisk []apis.CspDisk
+	var deviceIDs []string
 	for node, disks := range nodeDisk {
 		csp := nodeCspMap[node]
 		if csp == nil {
@@ -404,18 +410,19 @@ func (do *DiskOperations) addDisk(nodeDisk map[string][]string) error {
 		diskCount := 0
 		if len(disks) >= defaultDiskCount {
 			diskCount = (len(disks) / defaultDiskCount) * defaultDiskCount
-
 			for i := 0; i < defaultDiskCount; i = i + defaultDiskCount {
 				for j := 0; j < diskCount; j++ {
 					var item apis.CspDisk
-					item.Name = disks[j]
+					item.Name = disks[j].DiskName
+					item.DeviceID = disks[j].DeviceID
 					item.InUseByPool = true
+					deviceIDs = append(deviceIDs, disks[j].DeviceID)
 					cspdisk = append(cspdisk, item)
 				}
 				newGroup.Item = cspdisk
 				csp.Spec.Group = append(csp.Spec.Group, newGroup)
-
 			}
+			enqueueAddOperation(csp, deviceIDs)
 			_, err := do.controller.updateCsp(csp)
 			if err != nil {
 				return errors.Wrapf(err, "failed to update csp %s for spc %s for disk addition operations", csp.Name, do.spc.Name)
@@ -425,8 +432,18 @@ func (do *DiskOperations) addDisk(nodeDisk map[string][]string) error {
 	return nil
 }
 
-func (do *DiskOperations) getnodeDiskMap(disks []string) map[string][]string {
-	nodeDiskMap := make(map[string][]string)
+func enqueueAddOperation(csp *apis.CStorPool, deviceIDs []string) *apis.CStorPool {
+	newAddOperation := &apis.CstorOperation{
+		Action:   "Add",
+		Status:   "Init",
+		NewDisks: deviceIDs,
+	}
+	csp.Operations = append(csp.Operations, *newAddOperation)
+	return csp
+}
+
+func (do *DiskOperations) getnodeDiskMap(disks []string) map[string][]DiskDetails {
+	nodeDiskMap := make(map[string][]DiskDetails)
 	for _, disk := range disks {
 		gotDisk, err := do.controller.clientset.OpenebsV1alpha1().Disks().Get(disk, metav1.GetOptions{})
 		if err != nil {
@@ -435,7 +452,12 @@ func (do *DiskOperations) getnodeDiskMap(disks []string) map[string][]string {
 		if gotDisk == nil {
 			return nil
 		}
-		nodeDiskMap[gotDisk.Labels[string(apis.HostNameCPK)]] = append(nodeDiskMap[gotDisk.Labels[string(apis.HostNameCPK)]], disk)
+		devID := getDeviceId(gotDisk)
+		disk := &DiskDetails{
+			DiskName: gotDisk.Name,
+			DeviceID: devID,
+		}
+		nodeDiskMap[gotDisk.Labels[string(apis.HostNameCPK)]] = append(nodeDiskMap[gotDisk.Labels[string(apis.HostNameCPK)]], *disk)
 	}
 	return nodeDiskMap
 }
@@ -443,7 +465,8 @@ func (do *DiskOperations) getnodeDiskMap(disks []string) map[string][]string {
 func (do *DiskOperations) getCspNodeMap() map[string]*apis.CStorPool {
 	cspNodeMap := make(map[string]*apis.CStorPool)
 	for _, csp := range do.cspList.Items {
-		cspNodeMap[csp.Labels[string(apis.HostNameCPK)]] = &csp
+		cspCopy := csp
+		cspNodeMap[csp.Labels[string(apis.HostNameCPK)]] = &cspCopy
 	}
 	return cspNodeMap
 }
@@ -621,4 +644,14 @@ func (c *Controller) updateCsp(csp *apis.CStorPool) (*apis.CStorPool, error) {
 func (c *Controller) deleteCsp(csp *apis.CStorPool) error {
 	err := c.clientset.OpenebsV1alpha1().CStorPools().Delete(csp.Name, &metav1.DeleteOptions{})
 	return err
+}
+
+func getDeviceId(disk *apis.Disk) string {
+	var DeviceID string
+	if len(disk.Spec.DevLinks) != 0 && len(disk.Spec.DevLinks[0].Links) != 0 {
+		DeviceID = disk.Spec.DevLinks[0].Links[0]
+	} else {
+		DeviceID = disk.Spec.Path
+	}
+	return DeviceID
 }
