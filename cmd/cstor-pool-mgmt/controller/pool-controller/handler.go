@@ -286,6 +286,14 @@ func (c *CStorPoolController) cStorPoolOpsEventHandler(csp *apis.CStorPool) erro
 		if err != nil {
 			return errors.Wrapf(err, "Add operation failed")
 		}
+		return nil
+	}
+	if isDeleteOperation(csp) {
+		err := c.DeleteOperationHandler(csp)
+		if err != nil {
+			return errors.Wrapf(err, "Delete operation failed")
+		}
+		return nil
 	}
 	return nil
 }
@@ -297,13 +305,31 @@ func isAddOperation(csp *apis.CStorPool) bool {
 	return false
 }
 
+func isDeleteOperation(csp *apis.CStorPool) bool {
+	if csp.Operations[0].Action == "Delete" {
+		return true
+	}
+	return false
+}
+
+func (c *CStorPoolController) DeleteOperationHandler(csp *apis.CStorPool) error {
+	err := c.clientset.OpenebsV1alpha1().CStorPools().Delete(csp.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		c.recorder.Event(csp, corev1.EventTypeWarning, string(common.FailureDelete), string(common.MessageResourceFailDestroy))
+		return err
+	}
+	csp.Operations = append(csp.Operations[:0], csp.Operations[1:]...)
+	return nil
+}
+
 func (c *CStorPoolController) AddOperationHandler(csp *apis.CStorPool) error {
 	deviceIDs := csp.Operations[0].NewDisks
 	err := pool.ExpansionPredicates[csp.Spec.PoolSpec.PoolType](string(pool.PoolPrefix)+string(csp.ObjectMeta.UID), deviceIDs)
 	if err != nil {
-		c.recorder.Event(csp, corev1.EventTypeWarning, string(common.FailureDestroy), string(common.MessageResourceFailDestroy))
+		c.recorder.Event(csp, corev1.EventTypeWarning, string(common.FailureExpand), string(common.MessageResourceFailDestroy))
 		return err
 	}
+	c.recorder.Event(csp, corev1.EventTypeNormal, string(common.SuccessExpand), string(common.MessageResourceSuccessExpand))
 	csp.Operations = append(csp.Operations[:0], csp.Operations[1:]...)
 	return nil
 }

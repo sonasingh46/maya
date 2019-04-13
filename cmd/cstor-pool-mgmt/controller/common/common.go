@@ -77,8 +77,14 @@ const (
 	FailureDestroy EventReason = "FailDestroy"
 	// FailureExpand holds status for corresponding failed expansion of pool.
 	FailureExpand EventReason = "FailureExpand"
+	// SuccessExpand holds status for corresponding successful expansion of pool.
+	SuccessExpand EventReason = "SuccessExpand"
+	// FailureDelete holds status for corresponding failed deletion of pool.
+	FailureDelete EventReason = "FailureDelete"
 	// MessageResourceFailDestroy holds message for corresponding failed destroy resource.
 	MessageResourceFailDestroy EventReason = "Resource Destroy failed"
+	// MessageResourceFailDestroy holds message for corresponding failed destroy resource.
+	MessageResourceSuccessExpand EventReason = "Pool Expanded Successfully"
 	// FailureValidate holds status for corresponding failed validate resource.
 	FailureValidate EventReason = "FailValidate"
 	// MessageResourceFailValidate holds message for corresponding failed validate resource.

@@ -1,3 +1,19 @@
+/*
+Copyright 2019 The OpenEBS Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package spc
 
 import (
@@ -16,11 +32,12 @@ type PoolConfig struct {
 	cspList    *apis.CStorPoolList
 	controller *Controller
 }
+
 // handlerfunc is typed predicates to handle disk operations performed on spc.
 type handlerfunc func(*PoolConfig) (*apis.StoragePoolClaim, error)
 
 // HandlerPredicates contains a list of predicates that should be executed in order so as to
-// reach desired state in response to any cahnge in disk list on spc.
+// reach desired state in response to any change in disk list on spc.
 var HandlerPredicates = []handlerfunc{
 	HandleDiskRemoval,
 	HandleDiskAddition,
@@ -59,7 +76,7 @@ func (c *Controller) executeHandlerPredicates(spc *apis.StoragePoolClaim) error 
 	for _, p := range HandlerPredicates {
 		poolConfig, err := c.NewPoolConfig(spc)
 		if err != nil {
-			errors.Wrapf(err, "could not initialize the disk operations object for spc %s", spc.Name)
+			errors.Wrapf(err, "could not initialize the pool config for spc %s", spc.Name)
 		}
 		_, err = p(poolConfig)
 		if err != nil {
@@ -69,37 +86,98 @@ func (c *Controller) executeHandlerPredicates(spc *apis.StoragePoolClaim) error 
 	return nil
 }
 
-type removeDiskOps func()
+// HandleDiskRemoval executes a set of disk operations predicates that could happen as a result of removal
+// of disks on SPC.
+func HandleDiskRemoval(pc *PoolConfig) (*apis.StoragePoolClaim, error) {
+	for _, p := range removeDiskOpsPredicates {
+		p()(pc)
+		err := pc.updateCspList()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to update disk operations for spc %s", pc.spc.Name)
+		}
+	}
+	return pc.spc, nil
+}
 
-var diskRemovalOps = []removeDiskOps{}
+// HandleDiskAddition executes a set of disk operations predicates that could happen as a result of addition
+// of new disks on SPC.
+func HandleDiskAddition(pc *PoolConfig) (*apis.StoragePoolClaim, error) {
+	for _, p := range addDiskOpsPredicates {
+		p()(pc)
+		err := pc.updateCspList()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to update disk operations for spc %s", pc.spc.Name)
+		}
+	}
+	return pc.spc, nil
+}
 
-type addDiskOps func(*PoolConfig)
+// DiskOps is typed function for disk operations predicate functions.
+type DiskOps func(*PoolConfig)
 
-var diskAdditionOps = []func() addDiskOps{
+// opsPredicate is a typed function for function returning disk operations predicate functions.
+type opsPredicate func() DiskOps
+
+// removeDiskOpsPredicates contains a list of predicates that carry out disk removal operations.
+var removeDiskOpsPredicates = []opsPredicate{
+	RemoveDisk,
+	DeletePool,
+}
+
+// addDiskOpsPredicates contains a list of predicates that carry out disk addition operations.
+var addDiskOpsPredicates = []opsPredicate{
 	ReattachDisk,
 	ReplaceDisk,
 	ExpandPool,
 }
 
-func ReattachDisk() addDiskOps {
+// RemoveDisk removes a disk from cstor pool.
+func RemoveDisk() DiskOps {
+	return func(pc *PoolConfig) {
+		removedDisks := pc.getRemovedDisks()
+		for _, disk := range removedDisks {
+			pc.removeDisk(disk)
+			// TODO: Enqueue operation for disk removal.
+		}
+	}
+}
+
+// DeletePool deletes a pool if top level vdev is lost as a result of disk removals.
+func DeletePool() DiskOps {
+	return func(pc *PoolConfig) {
+		for _, csp := range pc.cspList.Items {
+			if isTopVdevLost(&csp) {
+				enqueueDeleteOperation(&csp)
+				pc.updatePoolConfig(csp)
+			}
+		}
+	}
+}
+
+// ReattachDisk re-attaches a disk on the cstor pool.
+func ReattachDisk() DiskOps {
 	return func(pc *PoolConfig) {
 		dettachedDisk := pc.getDettachedCspDisks()
 		for disk, _ := range dettachedDisk {
 			pc.reAttachDisk(disk)
+			// TOdO: Enqueue operation for reattaching disk.
 		}
 	}
 }
 
-func ReplaceDisk() addDiskOps {
+// ReplaceDisk replaces a disk on the cstor pool.
+func ReplaceDisk() DiskOps {
 	return func(pc *PoolConfig) {
 		replacementDisks := pc.getAddedDisks()
 		for _, disk := range replacementDisks {
 			pc.replaceDisk(disk)
+			// TODO: Enqueue operation for disk replacment.
 		}
 	}
 }
 
-func ExpandPool() addDiskOps {
+// ExpandPool expands the cstor pool vertically.
+func ExpandPool() DiskOps {
 	return func(pc *PoolConfig) {
 		nodeCspMap := pc.getCspNodeMap()
 		newDisks := pc.getAddedDisks()
@@ -114,58 +192,7 @@ func ExpandPool() addDiskOps {
 	}
 }
 
-
-
-func HandleDiskRemoval(pc *PoolConfig) (*apis.StoragePoolClaim, error) {
-	removedDisks := pc.getRemovedDisks()
-	for _, disk := range removedDisks {
-		pc.removeDisk(disk)
-	}
-	for _, csp := range pc.cspList.Items {
-		csp, err := pc.controller.updateCsp(&csp)
-		if isTopVdevLost(csp) {
-			err := pc.controller.deleteCsp(csp)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to delete csp %s for disk operations for spc %s", csp.Name, pc.spc.Name)
-			}
-		}
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to update csp %s for disk operations for spc %s", csp.Name, pc.spc.Name)
-		}
-	}
-	return pc.spc, nil
-}
-
-func HandleDiskAddition(pc *PoolConfig) (*apis.StoragePoolClaim, error) {
-	for _, p := range diskAdditionOps {
-		p()(pc)
-		err := pc.updateCspList()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to update disk operations for spc %s", pc.spc.Name)
-		}
-	}
-	return pc.spc, nil
-}
-
-func enqueueAddOperation(csp *apis.CStorPool, deviceIDs []string) *apis.CStorPool {
-	newAdpcperation := &apis.CstorOperation{
-		Action:   "Add",
-		Status:   "Init",
-		NewDisks: deviceIDs,
-	}
-	csp.Operations = append(csp.Operations, *newAdpcperation)
-	return csp
-}
-
-func enqueueDeleteOperation(csp *apis.CStorPool) *apis.CStorPool {
-	newAdpcperation := &apis.CstorOperation{
-		Action: "Delete",
-		Status: "Init",
-	}
-	csp.Operations = append(csp.Operations, *newAdpcperation)
-	return csp
-}
-
+// expandCsp adds disk to the CSP.
 func (pc *PoolConfig) expandCsp(csp *apis.CStorPool, disks []DiskDetails) {
 	var newGroup apis.DiskGroup
 	var cspdisk []apis.CspDisk
@@ -191,6 +218,7 @@ func (pc *PoolConfig) expandCsp(csp *apis.CStorPool, disks []DiskDetails) {
 	}
 }
 
+// updatePoolConfig updates the csp in poolconfig object, with the updated csp object(passed as an argument).
 func (pc *PoolConfig) updatePoolConfig(csp apis.CStorPool) {
 	for i, cspGot := range pc.cspList.Items {
 		if cspGot.Name == csp.Name {
@@ -199,6 +227,47 @@ func (pc *PoolConfig) updatePoolConfig(csp apis.CStorPool) {
 	}
 }
 
+// removeDisk takes disk name as an input and mark it false on CSP.
+func (pc *PoolConfig) removeDisk(diskName string) {
+	for i, csp := range pc.cspList.Items {
+		for j, group := range csp.Spec.Group {
+			for k, disk := range group.Item {
+				if disk.Name == diskName {
+					pc.cspList.Items[i].Spec.Group[j].Item[k].InUseByPool = false
+				}
+			}
+		}
+	}
+}
+
+// replaceDisk takes disk name as an input and put this disk in place of a removed disk on CSP.
+func (pc *PoolConfig) replaceDisk(diskName string) {
+	for i, csp := range pc.cspList.Items {
+		for j, group := range csp.Spec.Group {
+			for k, disk := range group.Item {
+				if disk.InUseByPool == false {
+					pc.cspList.Items[i].Spec.Group[j].Item[k].Name = diskName
+					pc.cspList.Items[i].Spec.Group[j].Item[k].InUseByPool = true
+				}
+			}
+		}
+	}
+}
+
+// reAttachDisk takes disk name as an input and attaches it back by marking it true on CSP.
+func (pc *PoolConfig) reAttachDisk(diskName string) {
+	for i, csp := range pc.cspList.Items {
+		for j, group := range csp.Spec.Group {
+			for k, disk := range group.Item {
+				if disk.Name == diskName {
+					pc.cspList.Items[i].Spec.Group[j].Item[k].InUseByPool = true
+				}
+			}
+		}
+	}
+}
+
+// getnodeDiskMap returns a map with key as hostname and value as details of disk attached to the node.
 func (pc *PoolConfig) getnodeDiskMap(disks []string) map[string][]DiskDetails {
 	nodeDiskMap := make(map[string][]DiskDetails)
 	for _, disk := range disks {
@@ -219,50 +288,15 @@ func (pc *PoolConfig) getnodeDiskMap(disks []string) map[string][]DiskDetails {
 	return nodeDiskMap
 }
 
+// getCspNodeMap returns a map with key as hostname and value as the csp object on that host.
 func (pc *PoolConfig) getCspNodeMap() map[string]*apis.CStorPool {
 	cspNodeMap := make(map[string]*apis.CStorPool)
 	for _, csp := range pc.cspList.Items {
+		// Pinning the variable to avoid scope lint issues.
 		cspCopy := csp
 		cspNodeMap[csp.Labels[string(apis.HostNameCPK)]] = &cspCopy
 	}
 	return cspNodeMap
-}
-
-func (pc *PoolConfig) reAttachDisk(diskName string) {
-	for i, csp := range pc.cspList.Items {
-		for j, group := range csp.Spec.Group {
-			for k, disk := range group.Item {
-				if disk.Name == diskName {
-					pc.cspList.Items[i].Spec.Group[j].Item[k].InUseByPool = true
-				}
-			}
-		}
-	}
-}
-
-func (pc *PoolConfig) replaceDisk(diskName string) {
-	for i, csp := range pc.cspList.Items {
-		for j, group := range csp.Spec.Group {
-			for k, disk := range group.Item {
-				if disk.InUseByPool == false {
-					pc.cspList.Items[i].Spec.Group[j].Item[k].Name = diskName
-					pc.cspList.Items[i].Spec.Group[j].Item[k].InUseByPool = true
-				}
-			}
-		}
-	}
-}
-
-func (pc *PoolConfig) removeDisk(diskName string) {
-	for i, csp := range pc.cspList.Items {
-		for j, group := range csp.Spec.Group {
-			for k, disk := range group.Item {
-				if disk.Name == diskName {
-					pc.cspList.Items[i].Spec.Group[j].Item[k].InUseByPool = false
-				}
-			}
-		}
-	}
 }
 
 // getSpcDisks returns map of spc disks present on SPC.
@@ -275,9 +309,9 @@ func (pc *PoolConfig) getSpcDisks() map[string]bool {
 	return spcDisks
 }
 
+// getCspDisks returns a map of disks present on CSPs.
 func (pc *PoolConfig) getCspDisks() map[string]bool {
 	// Make a map containing all the disks present in csp
-	// Get all CSP corresponding to the SPC
 	cspDisks := make(map[string]bool)
 	for _, csp := range pc.cspList.Items {
 		for _, group := range csp.Spec.Group {
@@ -289,8 +323,9 @@ func (pc *PoolConfig) getCspDisks() map[string]bool {
 	return cspDisks
 }
 
+// getDettachedCspDisks returns a map which tells whether a disk is detached but present on SPC.
 func (pc *PoolConfig) getDettachedCspDisks() map[string]bool {
-	// Make a map containing all the disks present in csp whis in not present in SPC.
+	// Make a map containing all the disks present in csp which in not present in SPC.
 	spcDisks := pc.getSpcDisks()
 	cspDisks := make(map[string]bool)
 	for _, csp := range pc.cspList.Items {
@@ -311,7 +346,7 @@ func (pc *PoolConfig) getRemovedDisks() []string {
 	// Get the disks present on CSPs
 	cspDisks := pc.getCspDisks()
 
-	// get the disk present on SPC
+	// Get the disk present on SPC
 	spcDisks := pc.getSpcDisks()
 	for disk, _ := range cspDisks {
 		if spcDisks[disk] == false {
@@ -321,7 +356,7 @@ func (pc *PoolConfig) getRemovedDisks() []string {
 	return removedDisk
 }
 
-// getAddedDisks returns a list of disk that is added to SPC.
+// getAddedDisks returns a list of disks that is added to SPC.
 func (pc *PoolConfig) getAddedDisks() []string {
 	var addedDisk []string
 	// get the disks present on CSPs
@@ -336,7 +371,8 @@ func (pc *PoolConfig) getAddedDisks() []string {
 	return addedDisk
 }
 
-
+// updateCspList updates the modified csp in poolconfig to upstream csp (k8s etcd) and puts the new csp(with changed RV)
+// back into poolconfig.
 func (pc *PoolConfig) updateCspList() error {
 	for i, csp := range pc.cspList.Items {
 		csp, err := pc.controller.updateCsp(&csp)
@@ -347,7 +383,8 @@ func (pc *PoolConfig) updateCspList() error {
 	}
 	return nil
 }
-// TODO: Patch using patch package.
+
+// TODO: Move to CSP Package
 func (c *Controller) patchSpcWithDiskHash(spc *apis.StoragePoolClaim) (*apis.StoragePoolClaim, error) {
 
 	diskHash, _ := hash.Hash(spc.Spec.Disks)
@@ -371,7 +408,7 @@ func (c *Controller) patchSpcWithDiskHash(spc *apis.StoragePoolClaim) (*apis.Sto
 	return spcGot, nil
 }
 
-
+// TODO: Move to CSP Package
 func (c *Controller) getCsp(spc *apis.StoragePoolClaim) (*apis.CStorPoolList, error) {
 	cspList, err := c.clientset.OpenebsV1alpha1().CStorPools().List(metav1.ListOptions{LabelSelector: string(apis.StoragePoolClaimCPK) + "=" + spc.Name})
 	if err != nil {
@@ -381,16 +418,19 @@ func (c *Controller) getCsp(spc *apis.StoragePoolClaim) (*apis.CStorPoolList, er
 
 }
 
+// TODO: Move to CSP package
 func (c *Controller) updateCsp(csp *apis.CStorPool) (*apis.CStorPool, error) {
 	csp, err := c.clientset.OpenebsV1alpha1().CStorPools().Update(csp)
 	return csp, err
 }
 
+// TODO: Move to CSP package
 func (c *Controller) deleteCsp(csp *apis.CStorPool) error {
 	err := c.clientset.OpenebsV1alpha1().CStorPools().Delete(csp.Name, &metav1.DeleteOptions{})
 	return err
 }
 
+// TODO: Logic for other pool topologies
 func isTopVdevLost(csp *apis.CStorPool) bool {
 	for _, group := range csp.Spec.Group {
 		count := 0
@@ -399,16 +439,18 @@ func isTopVdevLost(csp *apis.CStorPool) bool {
 				count++
 			}
 		}
-		if count >= 1 && csp.Spec.PoolSpec.PoolType == string(apis.PoolTypeStripedCPV) {
+		if count >= int(apis.StripedDiskCountCPV) && csp.Spec.PoolSpec.PoolType == string(apis.PoolTypeStripedCPV) {
 			return true
 		}
-		if count >= 2 && csp.Spec.PoolSpec.PoolType == string(apis.PoolTypeMirroredCPV) {
+		if count >= int(apis.MirroredDiskCountCPV) && csp.Spec.PoolSpec.PoolType == string(apis.PoolTypeMirroredCPV) {
 			return true
 		}
 	}
 	return false
 }
 
+// TODO: Move to disk package
+// getDeviceId returns the device ID of disk in case deviceID is present else device path.
 func getDeviceId(disk *apis.Disk) string {
 	var DeviceID string
 	if len(disk.Spec.DevLinks) != 0 && len(disk.Spec.DevLinks[0].Links) != 0 {
@@ -417,4 +459,25 @@ func getDeviceId(disk *apis.Disk) string {
 		DeviceID = disk.Spec.Path
 	}
 	return DeviceID
+}
+
+// enqueueAddOperation inserts a add operation  into csp object.
+func enqueueAddOperation(csp *apis.CStorPool, deviceIDs []string) *apis.CStorPool {
+	newAdpcperation := &apis.CstorOperation{
+		Action:   apis.PoolExpandAction,
+		Status:   apis.PoolOperationStatusInit,
+		NewDisks: deviceIDs,
+	}
+	csp.Operations = append(csp.Operations, *newAdpcperation)
+	return csp
+}
+
+// enqueueDeleteOperation inserts a delete operation  into csp object.
+func enqueueDeleteOperation(csp *apis.CStorPool) *apis.CStorPool {
+	newDeleteOperation := &apis.CstorOperation{
+		Action: apis.PoolDeleteAction,
+		Status: apis.PoolOperationStatusInit,
+	}
+	csp.Operations = append(csp.Operations, *newDeleteOperation)
+	return csp
 }

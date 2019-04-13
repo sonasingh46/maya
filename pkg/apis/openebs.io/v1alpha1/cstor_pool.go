@@ -36,6 +36,14 @@ type CStorPool struct {
 	Operations []CstorOperation `json:"operations"`
 }
 
+const (
+	PoolExpandAction        = "Add"
+	PoolDeleteAction        = "Delete"
+	DiskRemoveAction        = "Remove"
+	PoolOperationStatusInit = "Init"
+	PoolOperationStatusDone = "Done"
+)
+
 type CstorOperation struct {
 	Action   string   `json:"action"`
 	NewDisks []string `json:"newDisk"`
