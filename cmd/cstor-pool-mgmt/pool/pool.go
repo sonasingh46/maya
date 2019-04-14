@@ -97,7 +97,6 @@ func importPoolBuilder(cStorPool *apis.CStorPool, cachefileFlag bool) []string {
 func CreatePool(cStorPool *apis.CStorPool, diskList []string) error {
 	createAttr := createPoolBuilder(cStorPool, diskList)
 	glog.V(4).Info("createAttr : ", createAttr)
-
 	stdoutStderr, err := RunnerVar.RunCombinedOutput(PoolOperator, createAttr...)
 	if err != nil {
 		glog.Errorf("Unable to create pool: %v", string(stdoutStderr))
@@ -140,7 +139,7 @@ func createPoolBuilder(cStorPool *apis.CStorPool, diskList []string) []string {
 		}
 		createAttr = append(createAttr, disk)
 	}
-
+	fmt.Println(createAttr)
 	return createAttr
 }
 
