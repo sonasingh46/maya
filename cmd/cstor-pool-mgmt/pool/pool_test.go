@@ -531,13 +531,12 @@ func TestGetPool(t *testing.T) {
 	}
 }
 
-
 // TestCheckValidPool tests pool related operations.
 func TestCheckValidPool(t *testing.T) {
 	testPoolResource := map[string]struct {
 		expectedError error
 		test          *apis.CStorPool
-		deviceIDs []string
+		deviceIDs     []string
 	}{
 		"Invalid-poolNameEmpty": {
 			expectedError: fmt.Errorf("Poolname/UID cannot be empty"),
@@ -556,7 +555,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1"},
 		},
 		"Valid-StripedDisks1": {
 			expectedError: nil,
@@ -574,7 +573,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0"},
+			deviceIDs: []string{"/var/img-0"},
 		},
 		"Valid-StripedDisks2": {
 			expectedError: nil,
@@ -592,7 +591,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","var/img-1"},
+			deviceIDs: []string{"/var/img-0", "var/img-1"},
 		},
 
 		"Invalid-StripedDisks": {
@@ -611,7 +610,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{},
+			deviceIDs: []string{},
 		},
 
 		"Invalid-DiskListEmpty": {
@@ -630,7 +629,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{},
+			deviceIDs: []string{},
 		},
 		"Invalid-MirrorOddDisks": {
 			expectedError: fmt.Errorf("Expected multiples of %v number of disks, got %v no of disks for pool type: %v", 2, 3, "mirrored"),
@@ -648,7 +647,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1","/var/img-2"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1", "/var/img-2"},
 		},
 		"Valid-Pool": {
 			expectedError: nil,
@@ -666,7 +665,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1"},
 		},
 		"Valid-RaidzDisks": {
 			expectedError: nil,
@@ -684,7 +683,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1","/var/img-2"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1", "/var/img-2"},
 		},
 		"Invalid-NoOfRaidzDisks": {
 			expectedError: fmt.Errorf("Expected %v no of disks, got %v no of disks for pool type: %v", 3, 2, "raidz"),
@@ -702,7 +701,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1"},
 		},
 		"Valid-Raidz2Disks": {
 			expectedError: nil,
@@ -720,7 +719,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1","/var/img-2","/var/img-3","/var/img-4","/var/img-5"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1", "/var/img-2", "/var/img-3", "/var/img-4", "/var/img-5"},
 		},
 		"Invalid-Raidz2Disks": {
 			expectedError: fmt.Errorf("Expected %v no of disks, got %v no of disks for pool type: %v", 6, 5, "raidz2"),
@@ -738,8 +737,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1","/var/img-2","/var/img-3","/var/img-4"},
-
+			deviceIDs: []string{"/var/img-0", "/var/img-1", "/var/img-2", "/var/img-3", "/var/img-4"},
 		},
 		"Valid-RaidzDisks2": {
 			expectedError: fmt.Errorf("Expected multiples of %v number of disks, got %v no of disks for pool type: %v", 3, 7, "raidz"),
@@ -757,7 +755,7 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1","/var/img-2","/var/img-3","/var/img-4","/var/img-5","/var/img-6"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1", "/var/img-2", "/var/img-3", "/var/img-4", "/var/img-5", "/var/img-6"},
 		},
 		"InValid-RaidzDisks3": {
 			expectedError: fmt.Errorf("Expected multiples of %v number of disks, got %v no of disks for pool type: %v", 3, 5, "raidz"),
@@ -775,12 +773,12 @@ func TestCheckValidPool(t *testing.T) {
 				},
 				Status: apis.CStorPoolStatus{},
 			},
-			deviceIDs:[]string{"/var/img-0","/var/img-1","/var/img-2","/var/img-3","/var/img-4"},
+			deviceIDs: []string{"/var/img-0", "/var/img-1", "/var/img-2", "/var/img-3", "/var/img-4"},
 		},
 	}
 	for name, ut := range testPoolResource {
 		t.Run(name, func(t *testing.T) {
-			Obtainederr := CheckValidPool(ut.test,ut.deviceIDs)
+			Obtainederr := CheckValidPool(ut.test, ut.deviceIDs)
 			if Obtainederr != nil {
 				if Obtainederr.Error() != ut.expectedError.Error() {
 					t.Fatalf("Desc : %v, Expected error: %v, Got : %v",
@@ -790,7 +788,6 @@ func TestCheckValidPool(t *testing.T) {
 		})
 	}
 }
-
 
 // TestPoolStatus tests PoolStatus function.
 func TestPoolStatus(t *testing.T) {
