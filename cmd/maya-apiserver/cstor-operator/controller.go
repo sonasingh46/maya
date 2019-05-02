@@ -19,11 +19,11 @@ package spc
 import (
 	"fmt"
 	"github.com/golang/glog"
-	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	apisbeta "github.com/openebs/maya/pkg/apis/openebs.io/v1beta1"
 	clientset "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	openebsScheme "github.com/openebs/maya/pkg/client/generated/clientset/versioned/scheme"
 	informers "github.com/openebs/maya/pkg/client/generated/informers/externalversions"
-	listers "github.com/openebs/maya/pkg/client/generated/listers/openebs.io/v1alpha1"
+	listers "github.com/openebs/maya/pkg/client/generated/listers/openebs.io/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -87,7 +87,7 @@ func (cb *ControllerBuilder) withOpenEBSClient(cs clientset.Interface) *Controll
 
 // withSpcLister fills spc lister to controller object.
 func (cb *ControllerBuilder) withSpcLister(sl informers.SharedInformerFactory) *ControllerBuilder {
-	spcInformer := sl.Openebs().V1alpha1().StoragePoolClaims()
+	spcInformer := sl.Openebs().V1beta1().StoragePoolClaims()
 	cb.Controller.spcLister = spcInformer.Lister()
 	return cb
 }
@@ -118,7 +118,7 @@ func (cb *ControllerBuilder) withRecorder(ks kubernetes.Interface) *ControllerBu
 
 // withEventHandler adds event handlers controller object.
 func (cb *ControllerBuilder) withEventHandler(spcInformerFactory informers.SharedInformerFactory) *ControllerBuilder {
-	spcInformer := spcInformerFactory.Openebs().V1alpha1().StoragePoolClaims()
+	spcInformer := spcInformerFactory.Openebs().V1beta1().StoragePoolClaims()
 	// Set up an event handler for when SPC resources change
 	spcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    cb.Controller.addSpc,
@@ -140,43 +140,50 @@ func (cb *ControllerBuilder) Build() (*Controller, error) {
 
 // addSpc is the add event handler for spc.
 func (c *Controller) addSpc(obj interface{}) {
-	spc, ok := obj.(*apis.StoragePoolClaim)
+	spc, ok := obj.(*apisbeta.StoragePoolClaim)
 	if !ok {
 		runtime.HandleError(fmt.Errorf("Couldn't get spc object %#v", obj))
 		return
 	}
+	// Debug Tag
+	glog.Infof("Queuing SPC %s for add event", spc.Name)
 	glog.V(4).Infof("Queuing SPC %s for add event", spc.Name)
 	c.enqueueSpc(spc)
 }
 
 // updateSpc is the update event handler for spc.
 func (c *Controller) updateSpc(oldSpc, newSpc interface{}) {
-	spc, ok := newSpc.(*apis.StoragePoolClaim)
+	spc, ok := newSpc.(*apisbeta.StoragePoolClaim)
 	if !ok {
 		runtime.HandleError(fmt.Errorf("Couldn't get spc object %#v", newSpc))
 		return
 	}
 	// Enqueue spc only when there is a pending pool to be created.
-	if c.isPoolPending(spc) {
+	pc := c.NewPoolCreateConfig(spc)
+	if pc.IsPoolCreationPending() {
+		// Debug Tag
+		glog.Infof("Queuing SPC %s for update event", spc.Name)
 		c.enqueueSpc(newSpc)
 	}
 }
 
 // deleteSpc is the delete event handler for spc.
 func (c *Controller) deleteSpc(obj interface{}) {
-	spc, ok := obj.(*apis.StoragePoolClaim)
+	spc, ok := obj.(*apisbeta.StoragePoolClaim)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			runtime.HandleError(fmt.Errorf("Couldn't get object from tombstone %#v", obj))
 			return
 		}
-		spc, ok = tombstone.Obj.(*apis.StoragePoolClaim)
+		spc, ok = tombstone.Obj.(*apisbeta.StoragePoolClaim)
 		if !ok {
 			runtime.HandleError(fmt.Errorf("Tombstone contained object that is not a storagepoolclaim %#v", obj))
 			return
 		}
 	}
+	// Debug Tag
+	glog.Infof("Queuing SPC %s for delete event", spc.Name)
 	glog.V(4).Infof("Deleting storagepoolclaim %s", spc.Name)
 	c.enqueueSpc(spc)
 }

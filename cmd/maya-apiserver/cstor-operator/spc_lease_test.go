@@ -16,7 +16,7 @@ limitations under the License.
 package spc
 
 import (
-	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	apisv1beta1 "github.com/openebs/maya/pkg/apis/openebs.io/v1beta1"
 
 	"github.com/golang/glog"
 	openebsFakeClientset "github.com/openebs/maya/pkg/client/generated/clientset/versioned/fake"
@@ -31,10 +31,10 @@ import (
 )
 
 // SpcCreator will create fake spc objects
-func (focs *clientSet) SpcCreator(poolName string, SpcLeaseKeyPresent bool, SpcLeaseKeyValue string) *apis.StoragePoolClaim {
-	var spcObject *apis.StoragePoolClaim
+func (focs *clientSet) SpcCreator(poolName string, SpcLeaseKeyPresent bool, SpcLeaseKeyValue string) *apisv1beta1.StoragePoolClaim {
+	var spcObject *apisv1beta1.StoragePoolClaim
 	if SpcLeaseKeyPresent {
-		spcObject = &apis.StoragePoolClaim{
+		spcObject = &apisv1beta1.StoragePoolClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: poolName,
 				Annotations: map[string]string{
@@ -43,13 +43,13 @@ func (focs *clientSet) SpcCreator(poolName string, SpcLeaseKeyPresent bool, SpcL
 			},
 		}
 	} else {
-		spcObject = &apis.StoragePoolClaim{
+		spcObject = &apisv1beta1.StoragePoolClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: poolName,
 			},
 		}
 	}
-	spcGot, err := focs.oecs.OpenebsV1alpha1().StoragePoolClaims().Create(spcObject)
+	spcGot, err := focs.oecs.OpenebsV1beta1().StoragePoolClaims().Create(spcObject)
 	if err != nil {
 		glog.Error(err)
 	}
@@ -87,7 +87,7 @@ func TestHold(t *testing.T) {
 	PodCreator(fakeKubeClient, "maya-apiserver")
 	tests := map[string]struct {
 		// fakestoragepoolclaim holds the fake storagepoolcalim object in test cases.
-		fakestoragepoolclaim *apis.StoragePoolClaim
+		fakestoragepoolclaim *apisv1beta1.StoragePoolClaim
 		storagePoolClaimName string
 		podName              string
 		podNamespace         string
@@ -151,7 +151,7 @@ func TestHold(t *testing.T) {
 				t.Errorf("Test case failed:expected nil error but got error:'%v'", err)
 			}
 			// Check for lease value
-			spcGot, err := focs.oecs.OpenebsV1alpha1().StoragePoolClaims().Get(test.fakestoragepoolclaim.Name, metav1.GetOptions{})
+			spcGot, err := focs.oecs.OpenebsV1beta1().StoragePoolClaims().Get(test.fakestoragepoolclaim.Name, metav1.GetOptions{})
 			if spcGot.Annotations[SpcLeaseKey] != test.expectedResult {
 				t.Errorf("Test case failed: expected lease value '%v' but got '%v' ", test.expectedResult, spcGot.Annotations[SpcLeaseKey])
 

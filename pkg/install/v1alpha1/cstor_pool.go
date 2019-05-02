@@ -144,12 +144,13 @@ spec:
         uid: {{ .TaskResult.getspc.objectUID }} 
     spec:
       group:
-        {{- range $k, $v := $diskDeviceIdList.diskList }}
-        - disk:
-          {{- range $ki, $disk := $v.disk }}
+        {{- range $k, $v := $diskDeviceIdList.group }}
+        - name: {{$v.name}} 
+          disk:
+          {{- range $ki, $disk := $v.disks }}
           - name: {{$disk.name}} 
             inUseByPool: true
-            deviceID: {{$disk.deviceID}}
+            deviceID: {{ pluck $disk.name $diskDeviceIdList.diskDeviceIDMap | first }} 
           {{- end }}
         {{- end }}
       poolSpec:

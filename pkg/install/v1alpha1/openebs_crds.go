@@ -80,10 +80,10 @@ spec:
     # Each version can be enabled/disabled by Served flag.
     served: true
     # One and only one version must be marked as the storage version.
-    storage: false
+    storage: true
   - name: v1alpha1
     served: true
-    storage: true
+    storage: false
   # either Namespaced or Cluster
   scope: Cluster
   names:

@@ -116,6 +116,10 @@ func IsStatus(status string) Predicate {
 	}
 }
 
+func (ob *CSP) GetNodeName() string {
+	return ob.Object.GetLabels()[string(apis.HostNameCPK)]
+}
+
 // Filter will filter the csp instances
 // if all the predicates succeed against that
 // csp.

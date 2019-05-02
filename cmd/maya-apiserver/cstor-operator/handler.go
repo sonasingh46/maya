@@ -18,38 +18,31 @@ package spc
 
 import (
 	"fmt"
-	"strings"
-	"time"
-
 	"github.com/golang/glog"
-	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	nodeselectbeta "github.com/openebs/maya/pkg/algorithm/nodeselect/v1beta1"
+	apisv1beta1 "github.com/openebs/maya/pkg/apis/openebs.io/v1beta1"
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
+	spcpackage "github.com/openebs/maya/pkg/storagepoolclaim/v1beta1"
 	"github.com/pkg/errors"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	"time"
 )
 
-var (
-	// supportedPool is a map holding the supported raid configurations.
-	supportedPool = map[apis.CasPoolValString]bool{
-		apis.PoolTypeStripedCPV:  true,
-		apis.PoolTypeMirroredCPV: true,
-		apis.PoolTypeRaidzCPV:    true,
-		apis.PoolTypeRaidz2CPV:   true,
-	}
-)
-
-const (
-	// DiskStateActive is the active state of the disks.
-	DiskStateActive = "Active"
-	// ProvisioningTypeManual is the manual type of provisioning pool.
-	ProvisioningTypeManual = "manual"
-)
+// PoolCreateConfig is config object used to create a cstor pool.
+type PoolCreateConfig struct {
+	*nodeselectbeta.Operations
+	*Controller
+}
 
 type clientSet struct {
 	oecs openebs.Interface
+}
+
+func (c *Controller) NewPoolCreateConfig(spc *apisv1beta1.StoragePoolClaim) *PoolCreateConfig {
+	ops := nodeselectbeta.NewOperations(spc)
+	return &PoolCreateConfig{ops, c}
 }
 
 // syncHandler compares the actual state with the desired, and attempts to
@@ -100,18 +93,22 @@ func (c *Controller) enqueueSpc(spc interface{}) {
 }
 
 // synSpc is the function which tries to converge to a desired state for the spc.
-func (c *Controller) syncSpc(spc *apis.StoragePoolClaim) error {
-	err := validate(spc)
+func (c *Controller) syncSpc(spc *apisv1beta1.StoragePoolClaim) error {
+	pc := c.NewPoolCreateConfig(spc)
+	err := spcpackage.Validate(spcpackage.BuilderForAPIObject(spc).Spc)
 	if err != nil {
 		glog.Errorf("Validation of spc failed:%s", err)
 		return nil
 	}
-	pendingPoolCount, err := c.getPendingPoolCount(spc)
+	//pendingPoolCount, err := c.getPendingPoolCount(spc)
+	pendingPoolCount, err := pc.GetPendingPoolCount()
+	// TODO: Add context to error
 	if err != nil {
 		return err
 	}
-	if pendingPoolCount > 0 {
-		err = c.create(pendingPoolCount, spc)
+
+	if pc.IsPoolCreationPending() {
+		err = pc.create(pendingPoolCount, spc)
 		if err != nil {
 			return err
 		}
@@ -121,9 +118,9 @@ func (c *Controller) syncSpc(spc *apis.StoragePoolClaim) error {
 
 // create is a wrapper function that calls the actual function to create pool as many time
 // as the number of pools need to be created.
-func (c *Controller) create(pendingPoolCount int, spc *apis.StoragePoolClaim) error {
+func (pc *PoolCreateConfig) create(pendingPoolCount int, spc *apisv1beta1.StoragePoolClaim) error {
 	var newSpcLease Leaser
-	newSpcLease = &Lease{spc, SpcLeaseKey, c.clientset, c.kubeclientset}
+	newSpcLease = &Lease{spc, SpcLeaseKey, pc.clientset, pc.kubeclientset}
 	err := newSpcLease.Hold()
 	if err != nil {
 		return errors.Wrapf(err, "Could not acquire lease on spc object")
@@ -132,213 +129,10 @@ func (c *Controller) create(pendingPoolCount int, spc *apis.StoragePoolClaim) er
 	defer newSpcLease.Release()
 	for poolCount := 1; poolCount <= pendingPoolCount; poolCount++ {
 		glog.Infof("Provisioning pool %d/%d for storagepoolclaim %s", poolCount, pendingPoolCount, spc.Name)
-		err = c.CreateStoragePool(spc)
+		err = pc.CreateStoragePool(spc)
 		if err != nil {
 			runtime.HandleError(errors.Wrapf(err, "Pool provisioning failed for %d/%d for storagepoolclaim %s", poolCount, pendingPoolCount, spc.Name))
 		}
 	}
 	return nil
-}
-
-// validate validates the spc configuration before creation of pool.
-func validate(spc *apis.StoragePoolClaim) error {
-	for _, v := range validateFuncList {
-		err := v(spc)
-		if err != nil {
-			return errors.Wrapf(err, "spc validation failed")
-		}
-	}
-	return nil
-}
-
-// validateFunc is typed function for spc validation functions.
-type validateFunc func(*apis.StoragePoolClaim) error
-
-// validateFuncList holds a list of validate functions for spc
-var validateFuncList = []validateFunc{
-	validatePoolType,
-	validateDiskType,
-	validateAutoSpcMaxPool,
-}
-
-// validatePoolType validates pool type in spc.
-func validatePoolType(spc *apis.StoragePoolClaim) error {
-	poolType := spc.Spec.PoolSpec.PoolType
-	ok := supportedPool[apis.CasPoolValString(poolType)]
-	if !ok {
-		return errors.Errorf("aborting storagepool create operation as specified poolType is '%s' which is invalid", poolType)
-	}
-	return nil
-}
-
-// validateDiskType validates the disk types in spc.
-func validateDiskType(spc *apis.StoragePoolClaim) error {
-	diskType := spc.Spec.Type
-	if !(diskType == string(apis.TypeSparseCPV) || diskType == string(apis.TypeDiskCPV)) {
-		return errors.Errorf("aborting storagepool create operation as specified type is %s which is invalid", diskType)
-	}
-	return nil
-}
-
-// validateAutoSpcMaxPool validates the max pool count in auto spc
-func validateAutoSpcMaxPool(spc *apis.StoragePoolClaim) error {
-	if isAutoProvisioning(spc) {
-		maxPools := spc.Spec.MaxPools
-		if maxPools == nil {
-			return errors.Errorf("validation of spc object is failed as no max pool field present in spc %s", spc.Name)
-		}
-		if *maxPools < 0 {
-			return errors.Errorf("aborting storagepool create operation for %s as invalid maxPool value %d", spc.Name, maxPools)
-		}
-	}
-	return nil
-}
-
-// getCurrentPoolCount give the current pool count for the given auto provisioned spc.
-func (c *Controller) getCurrentPoolCount(spc *apis.StoragePoolClaim) (int, error) {
-	// Get the current count of provisioned pool for the storagepool claim
-	cspList, err := c.clientset.OpenebsV1alpha1().CStorPools().List(metav1.ListOptions{LabelSelector: string(apis.StoragePoolClaimCPK) + "=" + spc.Name})
-	if err != nil {
-		return 0, errors.Errorf("unable to get current pool count:unable to list cstor pools: %v", err)
-	}
-	return len(cspList.Items), nil
-}
-
-// isPoolPending tells whether some pool is pending to be created.
-func (c *Controller) isPoolPending(spc *apis.StoragePoolClaim) bool {
-	pCount, err := c.getPendingPoolCount(spc)
-	if err != nil {
-		glog.Errorf("Unable to get pending pool count for spc %s:%s", spc.Name, err)
-		return false
-	}
-	if pCount > 0 {
-		return true
-	}
-	return false
-}
-
-// getPendingPoolCount gives the count of pool that needs to be provisioned for a given spc.
-func (c *Controller) getPendingPoolCount(spc *apis.StoragePoolClaim) (int, error) {
-	var err error
-	var pendingPoolCount int
-	if isAutoProvisioning(spc) {
-		pendingPoolCount, err = c.getAutoSpcPendingPoolCount(spc)
-	} else {
-		pendingPoolCount, err = c.getManualSpcPendingPoolCount(spc)
-	}
-	if err != nil {
-		return 0, errors.Wrapf(err, "failed to get pending pool count for spc %s", spc.Name)
-	}
-	if isValidPendingPoolCount(pendingPoolCount) {
-		return pendingPoolCount, nil
-	}
-	return 0, nil
-}
-
-// getAutoSpcPendingPoolCount get the pending pool count for auto provisioned spc.
-func (c *Controller) getAutoSpcPendingPoolCount(spc *apis.StoragePoolClaim) (int, error) {
-	// Getting pending pool count in case of auto provisioned spc.
-	err := validateAutoSpcMaxPool(spc)
-	if err != nil {
-		return 0, errors.Wrapf(err, "error in max pool value in spc %s", spc.Name)
-	}
-	currentPoolCount, err := c.getCurrentPoolCount(spc)
-	if err != nil {
-		return 0, err
-	}
-	maxPoolCount := *(spc.Spec.MaxPools)
-	pendingPoolCount := maxPoolCount - currentPoolCount
-	return pendingPoolCount, nil
-}
-
-// getManualSpcPendingPoolCount gets the pending pool count for manual provisioned spc.
-func (c *Controller) getManualSpcPendingPoolCount(spc *apis.StoragePoolClaim) (int, error) {
-	usableNodeCount, err := c.getUsableNodeCount(spc)
-	if err != nil {
-		return 0, err
-	}
-	pendingPoolCount := len(usableNodeCount)
-	return pendingPoolCount, nil
-}
-
-// getFreeDiskNodeMap forms a map that holds disk names which can be used to create a pool.
-func (c *Controller) getFreeDiskNodeMap() (map[string]string, error) {
-	freeNodeDiskMap := make(map[string]string)
-
-	// Get all disk from kube-apiserver
-	diskList, err := c.clientset.OpenebsV1alpha1().Disks().List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	usedDiskMap, err := c.getUsedDiskMap()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to get the used disk map ")
-	}
-	for _, disk := range diskList.Items {
-		if usedDiskMap[disk.Name] == 1 {
-			continue
-		}
-		freeNodeDiskMap[disk.Name] = disk.Labels[string(apis.HostNameCPK)]
-	}
-	return freeNodeDiskMap, nil
-}
-
-// getUsableNodeCount forms a map that holds node which can be used to provision pool.
-func (c *Controller) getUsableNodeCount(spc *apis.StoragePoolClaim) (map[string]int, error) {
-	nodeCountMap := make(map[string]int)
-	freeNodeDiskMap, err := c.getFreeDiskNodeMap()
-	if err != nil {
-		return nil, err
-	}
-	for _, spcDisk := range spc.Spec.Disks.DiskList {
-		if !(len(strings.TrimSpace(freeNodeDiskMap[spcDisk])) == 0) {
-			nodeCountMap[freeNodeDiskMap[spcDisk]]++
-		}
-	}
-	return nodeCountMap, nil
-}
-
-// getUsedDiskMap form usedDisk map that will hold the list of all used disks
-// TODO: Move to disk package
-func (c *Controller) getUsedDiskMap() (map[string]int, error) {
-	// Get the list of disk that has been used already for pool provisioning
-	cspList, err := c.clientset.OpenebsV1alpha1().CStorPools().List(metav1.ListOptions{})
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to get the list of cstor pool")
-	}
-	// Form a map that will hold all the used disk
-	usedDiskMap := make(map[string]int)
-	for _, csp := range cspList.Items {
-		for _, group := range csp.Spec.Group {
-			for _, disk := range group.Item {
-				usedDiskMap[disk.Name]++
-			}
-		}
-	}
-	return usedDiskMap, nil
-}
-
-// isValidPendingPoolCount tells whether the pending pool count is valid or not.
-func isValidPendingPoolCount(pendingPoolCout int) bool {
-	if pendingPoolCout < 0 {
-		return false
-	}
-	return true
-}
-
-// isAutoProvisioning returns true the spc is auto provisioning type.
-func isAutoProvisioning(spc *apis.StoragePoolClaim) bool {
-	if spc.Spec.Disks.DiskList == nil {
-		return true
-	}
-	return false
-}
-
-// isManualProvisioning returns true if the spc is auto provisioning type.
-func isManualProvisioning(spc *apis.StoragePoolClaim) bool {
-	if spc.Spec.Disks.DiskList != nil {
-		return true
-	}
-	return false
 }

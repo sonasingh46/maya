@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/openebs/maya/pkg/apis/openebs.io/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -79,9 +80,6 @@ type CasPool struct {
 	// execution of namespaced resources with respect to storagepool
 	Namespace string
 
-	// DiskList is the list of disks over which a storagepool will be provisioned
-	DiskList []DiskGroup
-
 	// PoolType is the type of pool to be provisioned e.g. striped or mirrored
 	PoolType string
 
@@ -103,6 +101,7 @@ type CasPool struct {
 	// PendingPoolCount is the number of pools that will be tried for creation as a part of reconciliation.
 	PendingPoolCount int
 
-	DeviceID []string
-	Disks    DiskList
+	DiskGroups []v1beta1.StoragePoolClaimDiskGroups
+
+	DiskDeviceIDMap map[string]string
 }

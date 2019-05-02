@@ -21,6 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1beta1 "github.com/openebs/maya/pkg/apis/openebs.io/v1beta1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -757,19 +758,20 @@ func (in *CasPool) DeepCopyInto(out *CasPool) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	if in.DiskList != nil {
-		in, out := &in.DiskList, &out.DiskList
-		*out = make([]DiskGroup, len(*in))
+	if in.DiskGroups != nil {
+		in, out := &in.DiskGroups, &out.DiskGroups
+		*out = make([]v1beta1.StoragePoolClaimDiskGroups, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.DeviceID != nil {
-		in, out := &in.DeviceID, &out.DeviceID
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+	if in.DiskDeviceIDMap != nil {
+		in, out := &in.DiskDeviceIDMap, &out.DiskDeviceIDMap
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
-	in.Disks.DeepCopyInto(&out.Disks)
 	return
 }
 
