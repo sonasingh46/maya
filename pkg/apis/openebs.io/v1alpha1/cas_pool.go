@@ -110,4 +110,5 @@ type CasPool struct {
 
 	DeviceID           []string
 	APIBlockDeviceList ndm.BlockDeviceList
+	PoolSpec           PoolSpec
 }

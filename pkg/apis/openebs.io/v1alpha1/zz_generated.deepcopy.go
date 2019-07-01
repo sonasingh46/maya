@@ -1150,6 +1150,7 @@ func (in *CasPool) DeepCopyInto(out *CasPool) {
 		copy(*out, *in)
 	}
 	in.APIBlockDeviceList.DeepCopyInto(&out.APIBlockDeviceList)
+	in.PoolSpec.DeepCopyInto(&out.PoolSpec)
 	return
 }
 
