@@ -38,8 +38,19 @@ type CStorPool struct {
 
 // CStorPoolSpec is the spec listing fields for a CStorPool resource.
 type CStorPoolSpec struct {
-	Group    []BlockDeviceGroup `json:"group"`
-	PoolSpec CStorPoolAttr      `json:"poolSpec"`
+	// HostName is the name of kubernetes node where the pool
+	// should be created.
+	HostName string `json:"hostName"`
+
+	// PoolConfig is the default pool config that applies to the
+	// pool on node.
+	PoolConfig PoolConfig `json:"poolConfig"`
+	// RaidGroup is the group containing block devices
+	RaidGroup RaidGroup `json:"raidGroup"`
+	// TODO: Dperecate
+	Group []BlockDeviceGroup `json:"group"`
+	// TODO: Dperecate
+	PoolSpec CStorPoolAttr `json:"poolSpec"`
 }
 
 // BlockDeviceGroup contains a collection of block device for a given pool topology in CSP.
