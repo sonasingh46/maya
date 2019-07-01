@@ -18,8 +18,8 @@ package cspc
 
 import (
 	"fmt"
-
 	"github.com/golang/glog"
+	caspool "github.com/openebs/maya/pkg/algorithm/caspool/v1alpha1"
 	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	clientset "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	openebsScheme "github.com/openebs/maya/pkg/client/generated/clientset/versioned/scheme"
@@ -178,7 +178,7 @@ func (c *Controller) updateSpc(oldSpc, newSpc interface{}) {
 		return
 	}
 	// Enqueue cspc only when there is a pending pool to be created.
-	if c.isPoolPending(cspc) {
+	if caspool.IsPoolCreationPending(cspc) {
 		c.enqueueSpc(newSpc)
 	}
 }

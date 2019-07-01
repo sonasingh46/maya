@@ -19,6 +19,8 @@ package cspc
 import (
 	"fmt"
 	"github.com/golang/glog"
+	//"github.com/openebs/maya/pkg/algorithm/caspool/v1alpha1"
+	caspool "github.com/openebs/maya/pkg/algorithm/caspool/v1alpha1"
 	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	openebs "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 	"github.com/pkg/errors"
@@ -107,7 +109,7 @@ func (c *Controller) syncSpc(cspc *apis.CStorPoolCluster) error {
 		glog.Errorf("Validation of cspc failed:%s", err)
 		return nil
 	}
-	pendingPoolCount, err := c.getPendingPoolCount(cspc)
+	pendingPoolCount, err := caspool.GetPendingPoolCount(cspc)
 	if err != nil {
 		return err
 	}
@@ -142,15 +144,6 @@ func (c *Controller) create(pendingPoolCount int, cspc *apis.CStorPoolCluster) e
 }
 
 // TODO: Fix following function ( Mock Only )
-
-func (c *Controller) getPendingPoolCount(cspc *apis.CStorPoolCluster) (int, error) {
-	return 1, nil
-}
-
-func (c *Controller) isPoolPending(cspc *apis.CStorPoolCluster) bool {
-	return true
-}
-
 func validate(cspc *apis.CStorPoolCluster) error {
 	return nil
 }

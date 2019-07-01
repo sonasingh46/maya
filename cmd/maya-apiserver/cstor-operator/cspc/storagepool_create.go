@@ -18,6 +18,7 @@ package cspc
 
 import (
 	"github.com/golang/glog"
+	caspool "github.com/openebs/maya/pkg/algorithm/caspool/v1alpha1"
 	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/openebs/maya/pkg/storagepool"
 	"github.com/pkg/errors"
@@ -36,7 +37,7 @@ func (c *Controller) CreateStoragePool(cspcGot *apis.CStorPoolCluster) error {
 	//poolconfig := c.NewPoolCreateConfig(cspcGot)
 	//newCasPool, err := poolconfig.getCasPool(cspcGot)
 
-	newCasPool, err := c.getCasPool()
+	newCasPool, err := caspool.GetCasPool(cspcGot)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to build cas pool for cspc %s", cspcGot.Name)
@@ -67,9 +68,4 @@ func poolCreateWorker(pool *apis.CasPool) error {
 	}
 	glog.Infof("Cas template based storagepool created successfully: name '%s'", pool.StoragePoolClaim)
 	return nil
-}
-
-// TODO: Complete following function ( Mock Only ) 
-func (c *Controller) getCasPool() (*apis.CasPool, error) {
-	return &apis.CasPool{}, nil
 }
