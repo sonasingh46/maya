@@ -96,7 +96,7 @@ func TestProcessNextWorkItemModify(t *testing.T) {
 		},
 	}
 
-	_, err := poolController.clientset.OpenebsV1alpha1().CStorPools().Create(testPoolResource["img2PoolResource"].test)
+	_, err := poolController.clientset.OpenebsV1alpha1().CStorPools(namespace).Create(testPoolResource["img2PoolResource"].test)
 	if err != nil {
 		t.Fatalf("Unable to create resource : %v", testPoolResource["img2PoolResource"].test.ObjectMeta.Name)
 	}
@@ -150,7 +150,7 @@ func TestProcessNextWorkItemDestroy(t *testing.T) {
 		},
 	}
 
-	_, err := poolController.clientset.OpenebsV1alpha1().CStorPools().Create(testPoolResource["img2PoolResource"].test)
+	_, err := poolController.clientset.OpenebsV1alpha1().CStorPools(namespace).Create(testPoolResource["img2PoolResource"].test)
 	if err != nil {
 		t.Fatalf("Unable to create resource : %v", testPoolResource["img2PoolResource"].test.ObjectMeta.Name)
 	}

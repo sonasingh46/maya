@@ -28,6 +28,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TODO : Remove Hardcoding
+const namespace = "openebs"
+
 // getClientsetFunc is a typed function that
 // abstracts fetching internal clientset
 type getClientsetFunc func() (cs *clientset.Clientset, err error)
@@ -90,7 +93,7 @@ func (k *Kubeclient) withDefaults() {
 		k.list = func(cs *clientset.Clientset,
 			opts metav1.ListOptions) (*apis.CStorPoolList, error) {
 			return cs.OpenebsV1alpha1().
-				CStorPools().
+				CStorPools(namespace).
 				List(opts)
 		}
 	}
@@ -99,7 +102,7 @@ func (k *Kubeclient) withDefaults() {
 		k.get = func(cs *clientset.Clientset,
 			name string, opts metav1.GetOptions) (*apis.CStorPool, error) {
 			return cs.OpenebsV1alpha1().
-				CStorPools().
+				CStorPools(namespace).
 				Get(name, opts)
 		}
 	}
@@ -108,7 +111,7 @@ func (k *Kubeclient) withDefaults() {
 		k.create = func(cs *clientset.Clientset,
 			obj *apis.CStorPool) (*apis.CStorPool, error) {
 			return cs.OpenebsV1alpha1().
-				CStorPools().
+				CStorPools(namespace).
 				Create(obj)
 		}
 	}
@@ -117,7 +120,7 @@ func (k *Kubeclient) withDefaults() {
 		k.patch = func(cs *clientset.Clientset, name string,
 			pt types.PatchType, patchObj []byte) (*apis.CStorPool, error) {
 			return cs.OpenebsV1alpha1().
-				CStorPools().
+				CStorPools(namespace).
 				Patch(name, pt, patchObj)
 		}
 	}
@@ -126,7 +129,7 @@ func (k *Kubeclient) withDefaults() {
 		k.del = func(cs *clientset.Clientset, name string,
 			opts *metav1.DeleteOptions) error {
 			return cs.OpenebsV1alpha1().
-				CStorPools().
+				CStorPools(namespace).
 				Delete(name, opts)
 		}
 	}

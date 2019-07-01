@@ -30,7 +30,7 @@ import (
 // CStorPoolsGetter has a method to return a CStorPoolInterface.
 // A group's client should implement this interface.
 type CStorPoolsGetter interface {
-	CStorPools() CStorPoolInterface
+	CStorPools(namespace string) CStorPoolInterface
 }
 
 // CStorPoolInterface has methods to work with CStorPool resources.
@@ -49,12 +49,14 @@ type CStorPoolInterface interface {
 // cStorPools implements CStorPoolInterface
 type cStorPools struct {
 	client rest.Interface
+	ns     string
 }
 
 // newCStorPools returns a CStorPools
-func newCStorPools(c *OpenebsV1alpha1Client) *cStorPools {
+func newCStorPools(c *OpenebsV1alpha1Client, namespace string) *cStorPools {
 	return &cStorPools{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -62,6 +64,7 @@ func newCStorPools(c *OpenebsV1alpha1Client) *cStorPools {
 func (c *cStorPools) Get(name string, options v1.GetOptions) (result *v1alpha1.CStorPool, err error) {
 	result = &v1alpha1.CStorPool{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("cstorpools").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -74,6 +77,7 @@ func (c *cStorPools) Get(name string, options v1.GetOptions) (result *v1alpha1.C
 func (c *cStorPools) List(opts v1.ListOptions) (result *v1alpha1.CStorPoolList, err error) {
 	result = &v1alpha1.CStorPoolList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("cstorpools").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do().
@@ -85,6 +89,7 @@ func (c *cStorPools) List(opts v1.ListOptions) (result *v1alpha1.CStorPoolList, 
 func (c *cStorPools) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("cstorpools").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Watch()
@@ -94,6 +99,7 @@ func (c *cStorPools) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *cStorPools) Create(cStorPool *v1alpha1.CStorPool) (result *v1alpha1.CStorPool, err error) {
 	result = &v1alpha1.CStorPool{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("cstorpools").
 		Body(cStorPool).
 		Do().
@@ -105,6 +111,7 @@ func (c *cStorPools) Create(cStorPool *v1alpha1.CStorPool) (result *v1alpha1.CSt
 func (c *cStorPools) Update(cStorPool *v1alpha1.CStorPool) (result *v1alpha1.CStorPool, err error) {
 	result = &v1alpha1.CStorPool{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("cstorpools").
 		Name(cStorPool.Name).
 		Body(cStorPool).
@@ -116,6 +123,7 @@ func (c *cStorPools) Update(cStorPool *v1alpha1.CStorPool) (result *v1alpha1.CSt
 // Delete takes name of the cStorPool and deletes it. Returns an error if one occurs.
 func (c *cStorPools) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("cstorpools").
 		Name(name).
 		Body(options).
@@ -126,6 +134,7 @@ func (c *cStorPools) Delete(name string, options *v1.DeleteOptions) error {
 // DeleteCollection deletes a collection of objects.
 func (c *cStorPools) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("cstorpools").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Body(options).
@@ -137,6 +146,7 @@ func (c *cStorPools) DeleteCollection(options *v1.DeleteOptions, listOptions v1.
 func (c *cStorPools) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.CStorPool, err error) {
 	result = &v1alpha1.CStorPool{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("cstorpools").
 		SubResource(subresources...).
 		Name(name).

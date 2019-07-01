@@ -78,7 +78,7 @@ func (v *version) CStorCompletedBackups() CStorCompletedBackupInformer {
 
 // CStorPools returns a CStorPoolInformer.
 func (v *version) CStorPools() CStorPoolInformer {
-	return &cStorPoolInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &cStorPoolInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // CStorPoolClusters returns a CStorPoolClusterInformer.

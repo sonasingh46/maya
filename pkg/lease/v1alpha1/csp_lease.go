@@ -46,6 +46,9 @@ const (
 	PodName = "POD_NAME"
 	// NameSpace is the namespace where pool pod is running.
 	NameSpace = "NAMESPACE"
+
+	// TODO: Remvoe Hardcoding
+	OpenEBSNS = "openebs"
 )
 
 // Hold is the implenetation of method from interface Leases
@@ -102,7 +105,7 @@ func (sl *Lease) Update(podName string) (interface{}, error) {
 	} else {
 		sl.putUpdatedValue(podName, newCspObject)
 	}
-	csp, err := sl.Oecs.OpenebsV1alpha1().CStorPools().Update(newCspObject)
+	csp, err := sl.Oecs.OpenebsV1alpha1().CStorPools(OpenEBSNS).Update(newCspObject)
 	return csp, err
 }
 
@@ -259,6 +262,6 @@ func (sl *Lease) putUpdatedValue(podName string, newCspObject *apis.CStorPool) (
 // Patch is the specific implementation if Patch() interface for patching CSP objects.
 // Similarly, we can have for other objects, if required.
 func (sl *Lease) Patch(name string, nameSpace string, patchType types.PatchType, patches []byte) (*apis.CStorPool, error) {
-	obj, err := sl.Oecs.OpenebsV1alpha1().CStorPools().Patch(name, patchType, patches)
+	obj, err := sl.Oecs.OpenebsV1alpha1().CStorPools(OpenEBSNS).Patch(name, patchType, patches)
 	return obj, err
 }

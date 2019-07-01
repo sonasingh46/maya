@@ -39,6 +39,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+// TODO: Remove HArdcoding
+const namespace = "openebs"
+
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the cStorPoolUpdated resource
 // with the current status of the resource.
@@ -73,7 +76,7 @@ func (c *CStorPoolController) syncHandler(key string, operation common.QueueOper
 	cspObject.Status.Phase = apis.CStorPoolPhase(status)
 	if err != nil {
 		glog.Errorf(err.Error())
-		_, err := c.clientset.OpenebsV1alpha1().CStorPools().Update(cspObject)
+		_, err := c.clientset.OpenebsV1alpha1().CStorPools(namespace).Update(cspObject)
 		if err != nil {
 			return err
 		}
@@ -87,7 +90,7 @@ func (c *CStorPoolController) syncHandler(key string, operation common.QueueOper
 	// ToDo: Instead of having statusSync, capacitySync we can make it generic resource sync which syncs all the
 	// ToDo: requried fields on CSP ( Some code re-organization will be required)
 	c.syncCsp(cspObject)
-	_, err = c.clientset.OpenebsV1alpha1().CStorPools().Update(cspObject)
+	_, err = c.clientset.OpenebsV1alpha1().CStorPools(namespace).Update(cspObject)
 	if err != nil {
 		c.recorder.Event(cspObject, corev1.EventTypeWarning, string(common.FailedSynced), string(common.MessageResourceSyncFailure)+err.Error())
 		return err
@@ -337,7 +340,7 @@ func (c *CStorPoolController) getPoolResource(key string) (*apis.CStorPool, erro
 		return nil, nil
 	}
 
-	cStorPoolGot, err := c.clientset.OpenebsV1alpha1().CStorPools().Get(name, metav1.GetOptions{})
+	cStorPoolGot, err := c.clientset.OpenebsV1alpha1().CStorPools(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		// The cStorPool resource may no longer exist, in which case we stop
 		// processing.
@@ -356,7 +359,7 @@ func (c *CStorPoolController) removeFinalizer(cStorPoolGot *apis.CStorPool) erro
 	if len(cStorPoolGot.Finalizers) > 0 {
 		cStorPoolGot.Finalizers = []string{}
 	}
-	_, err := c.clientset.OpenebsV1alpha1().CStorPools().Update(cStorPoolGot)
+	_, err := c.clientset.OpenebsV1alpha1().CStorPools(namespace).Update(cStorPoolGot)
 	if err != nil {
 		return err
 	}

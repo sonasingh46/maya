@@ -106,7 +106,7 @@ func TestGetPoolResource(t *testing.T) {
 	}
 	for desc, ut := range testPoolResource {
 		// Create Pool resource
-		_, err := poolController.clientset.OpenebsV1alpha1().CStorPools().Create(ut.test)
+		_, err := poolController.clientset.OpenebsV1alpha1().CStorPools(namespace).Create(ut.test)
 		if err != nil {
 			t.Fatalf("Desc:%v, Unable to create resource : %v", desc, ut.test.ObjectMeta.Name)
 		}
@@ -157,7 +157,7 @@ func TestRemoveFinalizer(t *testing.T) {
 	}
 	for desc, ut := range testPoolResource {
 		// Create Pool resource
-		_, err := poolController.clientset.OpenebsV1alpha1().CStorPools().Create(ut.test)
+		_, err := poolController.clientset.OpenebsV1alpha1().CStorPools(namespace).Create(ut.test)
 		if err != nil {
 			t.Fatalf("Desc:%v, Unable to create resource : %v", desc, ut.test.ObjectMeta.Name)
 		}

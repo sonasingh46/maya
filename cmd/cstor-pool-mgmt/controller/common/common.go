@@ -198,7 +198,8 @@ func PoolNameHandler(cVR *apis.CStorVolumeReplica, cnt int) bool {
 // CheckForCStorPoolCRD is Blocking call for checking status of CStorPool CRD.
 func CheckForCStorPoolCRD(clientset clientset.Interface) {
 	for {
-		_, err := clientset.OpenebsV1alpha1().CStorPools().List(metav1.ListOptions{})
+		// TODO: Remvoe Hardcoding
+		_, err := clientset.OpenebsV1alpha1().CStorPools("openebs").List(metav1.ListOptions{})
 		if err != nil {
 			glog.Errorf("CStorPool CRD not found. Retrying after %v, error: %v", CRDRetryInterval, err)
 			time.Sleep(CRDRetryInterval)

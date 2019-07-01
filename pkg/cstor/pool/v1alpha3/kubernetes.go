@@ -29,6 +29,9 @@ import (
 	clientset "github.com/openebs/maya/pkg/client/generated/clientset/versioned"
 )
 
+// TODO : Remove Hardcoding
+const namespace = "openebs"
+
 // getClientsetFn is a typed function that
 // abstracts fetching of internal clientset
 type getClientsetFn func() (clientset *clientset.Clientset, err error)
@@ -73,12 +76,12 @@ func (k *Kubeclient) withDefaults() {
 	}
 	if k.list == nil {
 		k.list = func(cli *clientset.Clientset, opts metav1.ListOptions) (*apis.CStorPoolList, error) {
-			return cli.OpenebsV1alpha1().CStorPools().List(opts)
+			return cli.OpenebsV1alpha1().CStorPools(namespace).List(opts)
 		}
 	}
 	if k.del == nil {
 		k.del = func(cli *clientset.Clientset, name string, opts *metav1.DeleteOptions) (*apis.CStorPool, error) {
-			return nil, cli.OpenebsV1alpha1().CStorPools().Delete(name, opts)
+			return nil, cli.OpenebsV1alpha1().CStorPools(namespace).Delete(name, opts)
 		}
 	}
 }

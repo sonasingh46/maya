@@ -42,6 +42,10 @@ type CStorCompletedBackupNamespaceListerExpansion interface{}
 // CStorPoolLister.
 type CStorPoolListerExpansion interface{}
 
+// CStorPoolNamespaceListerExpansion allows custom methods to be added to
+// CStorPoolNamespaceLister.
+type CStorPoolNamespaceListerExpansion interface{}
+
 // CStorPoolClusterListerExpansion allows custom methods to be added to
 // CStorPoolClusterLister.
 type CStorPoolClusterListerExpansion interface{}

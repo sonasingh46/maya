@@ -54,7 +54,7 @@ func (focs *fakeClientset) CspCreator(poolName string, CspLeaseKeyPresent bool, 
 			},
 		}
 	}
-	cspGot, err := focs.oecs.OpenebsV1alpha1().CStorPools().Create(cspObject)
+	cspGot, err := focs.oecs.OpenebsV1alpha1().CStorPools("openebs").Create(cspObject)
 	if err != nil {
 		glog.Error(err)
 	}
@@ -157,7 +157,7 @@ func TestHold(t *testing.T) {
 				t.Errorf("Test case failed:expected nil error but got error:'%v'", err)
 			}
 			// Check for lease value
-			cspGot, _ := focs.oecs.OpenebsV1alpha1().CStorPools().Get(test.fakestoragepoolclaim.Name, metav1.GetOptions{})
+			cspGot, _ := focs.oecs.OpenebsV1alpha1().CStorPools("openebs").Get(test.fakestoragepoolclaim.Name, metav1.GetOptions{})
 			if cspGot.Annotations[CspLeaseKey] != test.expectedResult {
 				t.Errorf("Test case failed: expected lease value '%v' but got '%v' ", test.expectedResult, cspGot.Annotations[CspLeaseKey])
 

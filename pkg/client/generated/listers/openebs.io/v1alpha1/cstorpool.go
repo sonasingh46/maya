@@ -29,8 +29,8 @@ import (
 type CStorPoolLister interface {
 	// List lists all CStorPools in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.CStorPool, err error)
-	// Get retrieves the CStorPool from the index for a given name.
-	Get(name string) (*v1alpha1.CStorPool, error)
+	// CStorPools returns an object that can list and get CStorPools.
+	CStorPools(namespace string) CStorPoolNamespaceLister
 	CStorPoolListerExpansion
 }
 
@@ -52,9 +52,38 @@ func (s *cStorPoolLister) List(selector labels.Selector) (ret []*v1alpha1.CStorP
 	return ret, err
 }
 
-// Get retrieves the CStorPool from the index for a given name.
-func (s *cStorPoolLister) Get(name string) (*v1alpha1.CStorPool, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// CStorPools returns an object that can list and get CStorPools.
+func (s *cStorPoolLister) CStorPools(namespace string) CStorPoolNamespaceLister {
+	return cStorPoolNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// CStorPoolNamespaceLister helps list and get CStorPools.
+type CStorPoolNamespaceLister interface {
+	// List lists all CStorPools in the indexer for a given namespace.
+	List(selector labels.Selector) (ret []*v1alpha1.CStorPool, err error)
+	// Get retrieves the CStorPool from the indexer for a given namespace and name.
+	Get(name string) (*v1alpha1.CStorPool, error)
+	CStorPoolNamespaceListerExpansion
+}
+
+// cStorPoolNamespaceLister implements the CStorPoolNamespaceLister
+// interface.
+type cStorPoolNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all CStorPools in the indexer for a given namespace.
+func (s cStorPoolNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.CStorPool, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1alpha1.CStorPool))
+	})
+	return ret, err
+}
+
+// Get retrieves the CStorPool from the indexer for a given namespace and name.
+func (s cStorPoolNamespaceLister) Get(name string) (*v1alpha1.CStorPool, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

@@ -58,8 +58,8 @@ func (c *OpenebsV1alpha1Client) CStorCompletedBackups(namespace string) CStorCom
 	return newCStorCompletedBackups(c, namespace)
 }
 
-func (c *OpenebsV1alpha1Client) CStorPools() CStorPoolInterface {
-	return newCStorPools(c)
+func (c *OpenebsV1alpha1Client) CStorPools(namespace string) CStorPoolInterface {
+	return newCStorPools(c, namespace)
 }
 
 func (c *OpenebsV1alpha1Client) CStorPoolClusters(namespace string) CStorPoolClusterInterface {

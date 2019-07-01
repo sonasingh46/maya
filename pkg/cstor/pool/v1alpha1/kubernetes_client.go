@@ -21,20 +21,23 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TODO : Remove Hardcoding
+const namespace = "openebs"
+
 // Get is Kubernetes client implementation to get disk.
 func (k *KubernetesClient) Get(name string) (*CStorPool, error) {
-	d, err := k.Clientset.OpenebsV1alpha1().CStorPools().Get(name, v1.GetOptions{})
+	d, err := k.Clientset.OpenebsV1alpha1().CStorPools(namespace).Get(name, v1.GetOptions{})
 	return &CStorPool{d, nil}, err
 }
 
 // List is kubernetes client implementation to list disk.
 func (k *KubernetesClient) List(opts v1.ListOptions) (*CStorPoolList, error) {
-	dl, err := k.Clientset.OpenebsV1alpha1().CStorPools().List(opts)
+	dl, err := k.Clientset.OpenebsV1alpha1().CStorPools(namespace).List(opts)
 	return &CStorPoolList{dl, nil, nil}, err
 }
 
 // Create is kubernetes client implementation to create disk.
 func (k *KubernetesClient) Create(diskObj *apis.CStorPool) (*CStorPool, error) {
-	d, err := k.Clientset.OpenebsV1alpha1().CStorPools().Create(diskObj)
+	d, err := k.Clientset.OpenebsV1alpha1().CStorPools(namespace).Create(diskObj)
 	return &CStorPool{d, nil}, err
 }

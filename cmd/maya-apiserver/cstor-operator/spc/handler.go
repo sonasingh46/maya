@@ -199,7 +199,8 @@ func validateAutoSpcMaxPool(spc *apis.StoragePoolClaim) error {
 // getCurrentPoolCount give the current pool count for the given auto provisioned spc.
 func (c *Controller) getCurrentPoolCount(spc *apis.StoragePoolClaim) (int, error) {
 	// Get the current count of provisioned pool for the storagepool claim
-	cspList, err := c.clientset.OpenebsV1alpha1().CStorPools().List(metav1.ListOptions{LabelSelector: string(apis.StoragePoolClaimCPK) + "=" + spc.Name})
+	// TODO: Remove Hardcoding
+	cspList, err := c.clientset.OpenebsV1alpha1().CStorPools("openebs").List(metav1.ListOptions{LabelSelector: string(apis.StoragePoolClaimCPK) + "=" + spc.Name})
 	if err != nil {
 		return 0, errors.Errorf("unable to get current pool count:unable to list cstor pools: %v", err)
 	}
@@ -309,7 +310,8 @@ func (c *Controller) getUsableNodeCount(spc *apis.StoragePoolClaim) (map[string]
 // TODO: Move to blockDevice package
 func (c *Controller) getUsedBlockDeviceMap() (map[string]int, error) {
 	// Get the list of block devices that has been used already for pool provisioning
-	cspList, err := c.clientset.OpenebsV1alpha1().CStorPools().List(metav1.ListOptions{})
+	// TODO: Remove Hardcoding
+	cspList, err := c.clientset.OpenebsV1alpha1().CStorPools("openebs").List(metav1.ListOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to get the list of cstor pool")
 	}

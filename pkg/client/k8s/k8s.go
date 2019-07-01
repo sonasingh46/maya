@@ -358,7 +358,8 @@ func (k *K8sClient) ndmV1alpha1BlockDeviceOps() typed_ndm_v1alpha1.BlockDeviceIn
 // oeV1alpha1CSPOps is a utility function that provides a instance capable of
 // executing various OpenEBS CStorPool related operations
 func (k *K8sClient) oeV1alpha1CSPOps() typed_oe_v1alpha1.CStorPoolInterface {
-	return k.oecs.OpenebsV1alpha1().CStorPools()
+	// TODO: Remove Hardcoding
+	return k.oecs.OpenebsV1alpha1().CStorPools("openebs")
 }
 
 // GetOEV1alpha1CSP fetches the OpenEBS CStorPool specs based on

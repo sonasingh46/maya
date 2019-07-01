@@ -31,6 +31,7 @@ import (
 // FakeCStorPools implements CStorPoolInterface
 type FakeCStorPools struct {
 	Fake *FakeOpenebsV1alpha1
+	ns   string
 }
 
 var cstorpoolsResource = schema.GroupVersionResource{Group: "openebs.io", Version: "v1alpha1", Resource: "cstorpools"}
@@ -40,7 +41,8 @@ var cstorpoolsKind = schema.GroupVersionKind{Group: "openebs.io", Version: "v1al
 // Get takes name of the cStorPool, and returns the corresponding cStorPool object, and an error if there is any.
 func (c *FakeCStorPools) Get(name string, options v1.GetOptions) (result *v1alpha1.CStorPool, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(cstorpoolsResource, name), &v1alpha1.CStorPool{})
+		Invokes(testing.NewGetAction(cstorpoolsResource, c.ns, name), &v1alpha1.CStorPool{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -50,7 +52,8 @@ func (c *FakeCStorPools) Get(name string, options v1.GetOptions) (result *v1alph
 // List takes label and field selectors, and returns the list of CStorPools that match those selectors.
 func (c *FakeCStorPools) List(opts v1.ListOptions) (result *v1alpha1.CStorPoolList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(cstorpoolsResource, cstorpoolsKind, opts), &v1alpha1.CStorPoolList{})
+		Invokes(testing.NewListAction(cstorpoolsResource, cstorpoolsKind, c.ns, opts), &v1alpha1.CStorPoolList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -71,13 +74,15 @@ func (c *FakeCStorPools) List(opts v1.ListOptions) (result *v1alpha1.CStorPoolLi
 // Watch returns a watch.Interface that watches the requested cStorPools.
 func (c *FakeCStorPools) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(cstorpoolsResource, opts))
+		InvokesWatch(testing.NewWatchAction(cstorpoolsResource, c.ns, opts))
+
 }
 
 // Create takes the representation of a cStorPool and creates it.  Returns the server's representation of the cStorPool, and an error, if there is any.
 func (c *FakeCStorPools) Create(cStorPool *v1alpha1.CStorPool) (result *v1alpha1.CStorPool, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(cstorpoolsResource, cStorPool), &v1alpha1.CStorPool{})
+		Invokes(testing.NewCreateAction(cstorpoolsResource, c.ns, cStorPool), &v1alpha1.CStorPool{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -87,7 +92,8 @@ func (c *FakeCStorPools) Create(cStorPool *v1alpha1.CStorPool) (result *v1alpha1
 // Update takes the representation of a cStorPool and updates it. Returns the server's representation of the cStorPool, and an error, if there is any.
 func (c *FakeCStorPools) Update(cStorPool *v1alpha1.CStorPool) (result *v1alpha1.CStorPool, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(cstorpoolsResource, cStorPool), &v1alpha1.CStorPool{})
+		Invokes(testing.NewUpdateAction(cstorpoolsResource, c.ns, cStorPool), &v1alpha1.CStorPool{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -97,13 +103,14 @@ func (c *FakeCStorPools) Update(cStorPool *v1alpha1.CStorPool) (result *v1alpha1
 // Delete takes name of the cStorPool and deletes it. Returns an error if one occurs.
 func (c *FakeCStorPools) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(cstorpoolsResource, name), &v1alpha1.CStorPool{})
+		Invokes(testing.NewDeleteAction(cstorpoolsResource, c.ns, name), &v1alpha1.CStorPool{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeCStorPools) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(cstorpoolsResource, listOptions)
+	action := testing.NewDeleteCollectionAction(cstorpoolsResource, c.ns, listOptions)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.CStorPoolList{})
 	return err
@@ -112,7 +119,8 @@ func (c *FakeCStorPools) DeleteCollection(options *v1.DeleteOptions, listOptions
 // Patch applies the patch and returns the patched cStorPool.
 func (c *FakeCStorPools) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.CStorPool, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(cstorpoolsResource, name, data, subresources...), &v1alpha1.CStorPool{})
+		Invokes(testing.NewPatchSubresourceAction(cstorpoolsResource, c.ns, name, data, subresources...), &v1alpha1.CStorPool{})
+
 	if obj == nil {
 		return nil, err
 	}

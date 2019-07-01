@@ -24,7 +24,6 @@ import (
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +genclient:nonNamespaced
 // +resource:path=cstorpool
 
 // CStorPool describes a cstor pool resource created as custom resource.
