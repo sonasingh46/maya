@@ -1,40 +1,37 @@
-/*
-Copyright 2019 The OpenEBS Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package app
+package hostpath
 
 import (
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
-
 	pvController "github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
+	"github.com/openebs/maya/cmd/provisioner-localpv/pkg/provisioners"
+	t "github.com/openebs/maya/cmd/provisioner-localpv/pkg/types"
 	mconfig "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	persistentvolume "github.com/openebs/maya/pkg/kubernetes/persistentvolume/v1alpha1"
+	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 )
 
-// ProvisionHostPath is invoked by the Provisioner which expect HostPath PV
-//  to be provisioned and a valid PV spec returned.
-func (p *Provisioner) ProvisionHostPath(opts pvController.VolumeOptions, volumeConfig *VolumeConfig) (*v1.PersistentVolume, error) {
-	pvc := opts.PVC
-	node := opts.SelectedNode
-	name := opts.PVName
-	stgType := volumeConfig.GetStorageType()
+type LocalProvisioner struct {
+	lp *provision.LocalProvisioner
+}
 
-	path, err := volumeConfig.GetPath()
+func NewLocalProvisioner(provisioner *t.Provisioner, volumeConfig *t.VolumeConfig, volumeOptions pvController.VolumeOptions) provision.Provisioner {
+	return &LocalProvisioner{
+		lp: &provision.LocalProvisioner{
+			Provisioner:   provisioner,
+			VolumeConfig:  volumeConfig,
+			VolumeOptions: volumeOptions,
+		},
+	}
+}
+
+func (p *LocalProvisioner) Provision() (*v1.PersistentVolume, error) {
+	pvc := p.lp.VolumeOptions.PVC
+	node := p.lp.VolumeOptions.SelectedNode
+	name := p.lp.VolumeOptions.PVName
+	stgType := p.lp.VolumeConfig.GetStorageType()
+
+	path, err := p.lp.VolumeConfig.GetPath()
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +75,7 @@ func (p *Provisioner) ProvisionHostPath(opts pvController.VolumeOptions, volumeC
 	pvObj, err := persistentvolume.NewBuilder().
 		WithName(name).
 		WithLabels(labels).
-		WithReclaimPolicy(opts.PersistentVolumeReclaimPolicy).
+		WithReclaimPolicy(p.lp.VolumeOptions.PersistentVolumeReclaimPolicy).
 		WithAccessModes(pvc.Spec.AccessModes).
 		WithVolumeMode(fs).
 		WithCapacityQty(pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]).
@@ -91,14 +88,9 @@ func (p *Provisioner) ProvisionHostPath(opts pvController.VolumeOptions, volumeC
 	}
 
 	return pvObj, nil
-
 }
 
-// DeleteHostPath is invoked by the PVC controller to perform clean-up
-//  activities before deleteing the PV object. If reclaim policy is
-//  set to not-retain, then this function will create a helper pod
-//  to delete the host path from the node.
-func (p *Provisioner) DeleteHostPath(pv *v1.PersistentVolume) (err error) {
+func (p *LocalProvisioner) Delete(pv *v1.PersistentVolume) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to delete volume %v", pv.Name)
 	}()

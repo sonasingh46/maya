@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package app
+package env
 
 import (
 	menv "github.com/openebs/maya/pkg/env/v1alpha1"
@@ -48,7 +48,7 @@ func TestGetOpenEBSNamespace(t *testing.T) {
 			if len(v.value) != 0 {
 				os.Setenv(string(menv.OpenEBSNamespace), v.value)
 			}
-			actualValue := getOpenEBSNamespace()
+			actualValue := GetOpenEBSNamespace()
 			if !reflect.DeepEqual(actualValue, v.expectValue) {
 				t.Errorf("expected %s got %s", v.expectValue, actualValue)
 			}
@@ -82,7 +82,7 @@ func TestGetDefaultHelperImage(t *testing.T) {
 			if len(v.value) != 0 {
 				os.Setenv(string(ProvisionerHelperImage), v.value)
 			}
-			actualValue := getDefaultHelperImage()
+			actualValue := GetDefaultHelperImage()
 			if !reflect.DeepEqual(actualValue, v.expectValue) {
 				t.Errorf("expected %s got %s", v.expectValue, actualValue)
 			}
@@ -116,7 +116,7 @@ func TestGetDefaultBasePath(t *testing.T) {
 			if len(v.value) != 0 {
 				os.Setenv(string(ProvisionerBasePath), v.value)
 			}
-			actualValue := getDefaultBasePath()
+			actualValue := GetDefaultBasePath()
 			if !reflect.DeepEqual(actualValue, v.expectValue) {
 				t.Errorf("expected %s got %s", v.expectValue, actualValue)
 			}

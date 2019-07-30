@@ -19,7 +19,6 @@ package app
 import (
 	"flag"
 	"fmt"
-
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -87,7 +86,13 @@ func Start(cmd *cobra.Command) error {
 
 	//Create an instance of ProvisionerHandler to handle PV
 	// create and delete events.
-	provisioner, err := NewProvisioner(stopCh, kubeClient)
+	provisioner := NewProvisioner().WithKubeClient(kubeClient).
+		WithStopChannel(stopCh).
+		WithDefaultHelperImage().
+		WithOpenEBSNameSpace().
+		WithDefaultConfig().
+		WithVolumeConfigFn()
+	//provisioner, err := NewProvisioner(stopCh, kubeClient)
 	if err != nil {
 		return err
 	}

@@ -1,85 +1,90 @@
-/*
-Copyright 2019 The OpenEBS Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-/*
-This file contains the volume creation and deletion handlers invoked by
-the github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller.
-
-The handler that are madatory to be implemented:
-
-- Provision - is called by controller to perform custom validation on the PVC
-  request and return a valid PV spec. The controller will create the PV object
-  using the spec passed to it and bind it to the PVC.
-
-- Delete - is called by controller to perform cleanup tasks on the PV before
-  deleting it.
-
-*/
-
 package app
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
-
 	pvController "github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
+	events "github.com/openebs/maya/cmd/provisioner-localpv/app/analytics"
+	"github.com/openebs/maya/cmd/provisioner-localpv/app/env"
+	"github.com/openebs/maya/cmd/provisioner-localpv/pkg/provisioners"
+	"github.com/openebs/maya/cmd/provisioner-localpv/pkg/provisioners/blockdevice"
+	"github.com/openebs/maya/cmd/provisioner-localpv/pkg/provisioners/hostpath"
+	t "github.com/openebs/maya/cmd/provisioner-localpv/pkg/types"
 	mconfig "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
-	menv "github.com/openebs/maya/pkg/env/v1alpha1"
+	cast "github.com/openebs/maya/pkg/castemplate/v1alpha1"
 	analytics "github.com/openebs/maya/pkg/usage"
-	v1 "k8s.io/api/core/v1"
+	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-
-	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
+	"strings"
 )
 
-const (
-	//KeyNode represents the key values used for specifying the Node Affinity
-	// based on the hostname
-	KeyNode = "kubernetes.io/hostname"
-)
+// Provisioner is  OpenEBS local provisioner
+type Provisioner struct {
+	lp *t.Provisioner
+}
 
-// NewProvisioner will create a new Provisioner object and initialize
-//  it with global information used across PV create and delete operations.
-func NewProvisioner(stopCh chan struct{}, kubeClient *clientset.Clientset) (*Provisioner, error) {
+// NewProvisioner returns an empty instance of Provisioner.
+// Notes: The constructor should be called with proper builders( e.g. WithKubeClient etc defined below)
+// else it can be abused.
+func NewProvisioner() *Provisioner {
+	p := &Provisioner{}
+	return p
+}
 
-	namespace := getOpenEBSNamespace() //menv.Get(menv.OpenEBSNamespace)
-	if len(strings.TrimSpace(namespace)) == 0 {
-		return nil, fmt.Errorf("Cannot start Provisioner: failed to get namespace")
-	}
+// WithKubeClient sets the kubeclient field of the Provisioner.
+func (p *Provisioner) WithKubeClient(kubeClient *clientset.Clientset) *Provisioner {
+	p.lp.KubeClient = kubeClient
+	return p
+}
 
-	p := &Provisioner{
-		stopCh: stopCh,
+// WithStopChannel sets the stopch field of the Provisioner.
+func (p *Provisioner) WithStopChannel(ch chan struct{}) *Provisioner {
+	p.lp.StopCh = ch
+	return p
+}
 
-		kubeClient:  kubeClient,
-		namespace:   namespace,
-		helperImage: getDefaultHelperImage(),
-		defaultConfig: []mconfig.Config{
-			{
-				Name:  KeyPVBasePath,
-				Value: getDefaultBasePath(),
-			},
+// WithNameSpace sets the namespace field of the Provisioner.
+func (p *Provisioner) WithNameSpace(namespace string) *Provisioner {
+	p.lp.Namespace = namespace
+	return p
+}
+
+// WithOpenEBSNameSpace sets the namespace field of the Provisioner.
+func (p *Provisioner) WithOpenEBSNameSpace() *Provisioner {
+	p.lp.Namespace = env.GetOpenEBSNamespace()
+	return p
+}
+
+// WithHelperImage sets the helperImage field of the Provisioner.
+func (p *Provisioner) WithHelperImage(helperImage string) *Provisioner {
+	p.lp.HelperImage = env.GetDefaultHelperImage()
+	return p
+}
+
+// WithHelperImage sets the helperImage field of the Provisioner.
+func (p *Provisioner) WithDefaultHelperImage() *Provisioner {
+	p.lp.HelperImage = env.GetDefaultBasePath()
+	return p
+}
+
+// WithDefaultConfig sets the defaultConfig of Provisioner
+func (p *Provisioner) WithDefaultConfig() *Provisioner {
+	defaultConfig := []mconfig.Config{
+		{
+			Name:  t.KeyPVBasePath,
+			Value: env.GetDefaultBasePath(),
 		},
 	}
-	p.getVolumeConfig = p.GetVolumeConfig
+	p.lp.DefaultConfig = defaultConfig
+	return p
+}
 
-	return p, nil
+func (p *Provisioner) WithVolumeConfigFn() *Provisioner {
+	p.lp.GetVolumeConfig = p.getVolumeConfig
+	return p
 }
 
 // SupportsBlock will be used by controller to determine if block mode is
@@ -110,7 +115,7 @@ func (p *Provisioner) Provision(opts pvController.VolumeOptions) (*v1.Persistent
 	// Create a new Config instance for the PV by merging the
 	// default configuration with configuration provided
 	// via PVC and the associated StorageClass
-	pvCASConfig, err := p.getVolumeConfig(name, pvc)
+	pvCASConfig, err := p.lp.GetVolumeConfig(name, pvc)
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +127,10 @@ func (p *Provisioner) Provision(opts pvController.VolumeOptions) (*v1.Persistent
 	if reqMap != nil {
 		size = pvc.Spec.Resources.Requests["storage"]
 	}
-	sendEventOrIgnore(name, size.String(), stgType, analytics.VolumeProvision)
-	if stgType == "hostpath" {
-		return p.ProvisionHostPath(opts, pvCASConfig)
-	}
-	if stgType == "device" {
-		return p.ProvisionBlockDevice(opts, pvCASConfig)
-	}
+	events.SendEventOrIgnore(name, size.String(), stgType, analytics.VolumeProvision)
+
+	p.GetLocalProvisioner(stgType, opts, pvCASConfig).Provision()
+
 	return nil, fmt.Errorf("PV with StorageType %v is not supported", stgType)
 }
 
@@ -150,28 +152,79 @@ func (p *Provisioner) Delete(pv *v1.PersistentVolume) (err error) {
 			size = pv.Spec.Capacity["storage"]
 		}
 
-		sendEventOrIgnore(pv.Name, size.String(), pvType, analytics.VolumeDeprovision)
-		if pvType == "local-device" {
-			return p.DeleteBlockDevice(pv)
-		}
-		return p.DeleteHostPath(pv)
+		events.SendEventOrIgnore(pv.Name, size.String(), pvType, analytics.VolumeDeprovision)
+
+		p.GetLocalProvisioner(pvType, pvController.VolumeOptions{}, nil).Delete(pv)
 	}
 	glog.Infof("Retained volume %v", pv.Name)
 	return nil
 }
 
-// sendEventOrIgnore sends anonymous local-pv provision/delete events
-func sendEventOrIgnore(pvName, capacity, stgType, method string) {
-	if method == analytics.VolumeProvision {
-		stgType = "local-" + stgType
+func (p *Provisioner) GetLocalProvisioner(ptype string, opts pvController.VolumeOptions, config *t.VolumeConfig) provision.Provisioner {
+	if ptype == "hostpath" || ptype == "local-device" {
+		return hostpath.NewLocalProvisioner(p.lp, config, opts)
 	}
-	if menv.Truthy(menv.OpenEBSEnableAnalytics) {
-		analytics.New().Build().ApplicationBuilder().
-			SetVolumeType(stgType, method).
-			SetDocumentTitle(pvName).
-			SetLabel(analytics.EventLabelCapacity).
-			SetReplicaCount(analytics.LocalPVReplicaCount, method).
-			SetCategory(method).
-			SetVolumeCapacity(capacity).Send()
+	if ptype == "device" {
+		return blockdevice.NewLocalProvisioner(p.lp, config, opts)
 	}
+	return &provision.LocalProvisioner{}
+}
+
+//GetVolumeConfig creates a new VolumeConfig struct by
+// parsing and merging the configuration provided in the PVC
+// annotation - cas.openebs.io/config with the
+// default configuration of the provisioner.
+func (p *Provisioner) getVolumeConfig(pvName string, pvc *v1.PersistentVolumeClaim) (*t.VolumeConfig, error) {
+
+	pvConfig := p.lp.DefaultConfig
+
+	//Fetch the SC
+	scName := GetStorageClassName(pvc)
+	sc, err := p.lp.KubeClient.StorageV1().StorageClasses().Get(*scName, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get storageclass: missing sc name {%v}", scName)
+	}
+
+	// extract and merge the cas config from storageclass
+	scCASConfigStr := sc.ObjectMeta.Annotations[string(mconfig.CASConfigKey)]
+	glog.Infof("SC %v has config:%v", *scName, scCASConfigStr)
+	if len(strings.TrimSpace(scCASConfigStr)) != 0 {
+		scCASConfig, err := cast.UnMarshallToConfig(scCASConfigStr)
+		if err == nil {
+			pvConfig = cast.MergeConfig(scCASConfig, pvConfig)
+		} else {
+			return nil, errors.Wrapf(err, "failed to get config: invalid sc config {%v}", scCASConfigStr)
+		}
+	}
+	pvConfigMap, err := cast.ConfigToMap(pvConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to read volume config: pvc {%v}", pvc.ObjectMeta.Name)
+	}
+
+	c := &t.VolumeConfig{
+		PVName:  pvName,
+		PVCName: pvc.ObjectMeta.Name,
+		SCName:  *scName,
+		Options: pvConfigMap,
+	}
+	return c, nil
+}
+
+// GetStorageClassName extracts the StorageClass name from PVC
+func GetStorageClassName(pvc *v1.PersistentVolumeClaim) *string {
+	// Use beta annotation first
+	class, found := pvc.Annotations[t.BetaStorageClassAnnotation]
+	if found {
+		return &class
+	}
+	return pvc.Spec.StorageClassName
+}
+
+// GetLocalPVType extracts the Local PV Type from PV
+func GetLocalPVType(pv *v1.PersistentVolume) string {
+	casType, found := pv.Labels[string(mconfig.CASTypeKey)]
+	if found {
+		return casType
+	}
+	return ""
 }

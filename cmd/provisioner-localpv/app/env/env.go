@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package app
+package env
 
 import (
 	menv "github.com/openebs/maya/pkg/env/v1alpha1"
@@ -44,13 +44,13 @@ var (
 	defaultBasePath    = "/var/openebs/local"
 )
 
-func getOpenEBSNamespace() string {
+func GetOpenEBSNamespace() string {
 	return menv.Get(menv.OpenEBSNamespace)
 }
-func getDefaultHelperImage() string {
+func GetDefaultHelperImage() string {
 	return menv.GetOrDefault(ProvisionerHelperImage, string(defaultHelperImage))
 }
 
-func getDefaultBasePath() string {
+func GetDefaultBasePath() string {
 	return menv.GetOrDefault(ProvisionerBasePath, string(defaultBasePath))
 }

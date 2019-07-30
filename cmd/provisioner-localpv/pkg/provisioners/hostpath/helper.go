@@ -17,7 +17,7 @@ This code was taken from https://github.com/rancher/local-path-provisioner
 and modified to work with the configuration options used by OpenEBS
 */
 
-package app
+package hostpath
 
 import (
 	"path/filepath"
@@ -71,7 +71,7 @@ func (pOpts *HelperPodOptions) validate() error {
 // createInitPod launches a helper(busybox) pod, to create the host path.
 //  The local pv expect the hostpath to be already present before mounting
 //  into pod. Validate that the local pv host path is not created under root.
-func (p *Provisioner) createInitPod(pOpts *HelperPodOptions) error {
+func (p *LocalProvisioner) createInitPod(pOpts *HelperPodOptions) error {
 	//err := pOpts.validate()
 	if err := pOpts.validate(); err != nil {
 		return err
@@ -94,7 +94,7 @@ func (p *Provisioner) createInitPod(pOpts *HelperPodOptions) error {
 		WithContainerBuilder(
 			container.NewBuilder().
 				WithName("local-path-init").
-				WithImage(p.helperImage).
+				WithImage(p.lp.Provisioner.HelperImage).
 				WithCommandNew(append(pOpts.cmdsForPath, filepath.Join("/data/", volumeDir))).
 				WithVolumeMountsNew([]corev1.VolumeMount{
 					{
@@ -112,13 +112,13 @@ func (p *Provisioner) createInitPod(pOpts *HelperPodOptions) error {
 		Build()
 
 	//Launch the init pod.
-	iPod, err := p.kubeClient.CoreV1().Pods(p.namespace).Create(initPod)
+	iPod, err := p.lp.Provisioner.KubeClient.CoreV1().Pods(p.lp.Provisioner.Namespace).Create(initPod)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		e := p.kubeClient.CoreV1().Pods(p.namespace).Delete(iPod.Name, &metav1.DeleteOptions{})
+		e := p.lp.Provisioner.KubeClient.CoreV1().Pods(p.lp.Provisioner.Namespace).Delete(iPod.Name, &metav1.DeleteOptions{})
 		if e != nil {
 			glog.Errorf("unable to delete the helper pod: %v", e)
 		}
@@ -127,7 +127,7 @@ func (p *Provisioner) createInitPod(pOpts *HelperPodOptions) error {
 	//Wait for the cleanup pod to complete it job and exit
 	completed := false
 	for i := 0; i < CmdTimeoutCounts; i++ {
-		checkPod, err := p.kubeClient.CoreV1().Pods(p.namespace).Get(iPod.Name, metav1.GetOptions{})
+		checkPod, err := p.lp.Provisioner.KubeClient.CoreV1().Pods(p.lp.Provisioner.Namespace).Get(iPod.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		} else if checkPod.Status.Phase == corev1.PodSucceeded {
@@ -148,7 +148,7 @@ func (p *Provisioner) createInitPod(pOpts *HelperPodOptions) error {
 //  an unique PV path - under a given BasePath. From the absolute path,
 //  it extracts the base path and the PV path. The helper pod is then launched
 //  by mounting the base path - and performing a delete on the unique PV path.
-func (p *Provisioner) createCleanupPod(pOpts *HelperPodOptions) error {
+func (p *LocalProvisioner) createCleanupPod(pOpts *HelperPodOptions) error {
 	//err := pOpts.validate()
 	if err := pOpts.validate(); err != nil {
 		return err
@@ -171,7 +171,7 @@ func (p *Provisioner) createCleanupPod(pOpts *HelperPodOptions) error {
 		WithContainerBuilder(
 			container.NewBuilder().
 				WithName("local-path-cleanup").
-				WithImage(p.helperImage).
+				WithImage(p.lp.Provisioner.HelperImage).
 				WithCommandNew(append(pOpts.cmdsForPath, filepath.Join("/data/", volumeDir))).
 				WithVolumeMountsNew([]corev1.VolumeMount{
 					{
@@ -189,13 +189,13 @@ func (p *Provisioner) createCleanupPod(pOpts *HelperPodOptions) error {
 		Build()
 
 	//Launch the cleanup pod.
-	cPod, err := p.kubeClient.CoreV1().Pods(p.namespace).Create(cleanerPod)
+	cPod, err := p.lp.Provisioner.KubeClient.CoreV1().Pods(p.lp.Provisioner.Namespace).Create(cleanerPod)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		e := p.kubeClient.CoreV1().Pods(p.namespace).Delete(cPod.Name, &metav1.DeleteOptions{})
+		e := p.lp.Provisioner.KubeClient.CoreV1().Pods(p.lp.Provisioner.Namespace).Delete(cPod.Name, &metav1.DeleteOptions{})
 		if e != nil {
 			glog.Errorf("unable to delete the helper pod: %v", e)
 		}
@@ -204,7 +204,7 @@ func (p *Provisioner) createCleanupPod(pOpts *HelperPodOptions) error {
 	//Wait for the cleanup pod to complete it job and exit
 	completed := false
 	for i := 0; i < CmdTimeoutCounts; i++ {
-		checkPod, err := p.kubeClient.CoreV1().Pods(p.namespace).Get(cPod.Name, metav1.GetOptions{})
+		checkPod, err := p.lp.Provisioner.KubeClient.CoreV1().Pods(p.lp.Provisioner.Namespace).Get(cPod.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		} else if checkPod.Status.Phase == corev1.PodSucceeded {

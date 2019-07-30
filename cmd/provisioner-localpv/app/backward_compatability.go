@@ -17,11 +17,12 @@ limitations under the License.
 package app
 
 import (
+	"github.com/openebs/maya/cmd/provisioner-localpv/app/env"
 	"github.com/pkg/errors"
 
-	blockdeviceclaim "github.com/openebs/maya/pkg/blockdeviceclaim/v1alpha1"
-
+	t "github.com/openebs/maya/cmd/provisioner-localpv/pkg/types"
 	mconfig "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	blockdeviceclaim "github.com/openebs/maya/pkg/blockdeviceclaim/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 )
@@ -45,7 +46,7 @@ func addLocalPVFinalizerOnAssociatedBDCs(kubeClient *clientset.Clientset) error 
 	for _, pvObj := range pvList.Items {
 		bdcName := "bdc-" + pvObj.Name
 
-		bdcObj, err := blockdeviceclaim.NewKubeClient().WithNamespace(getOpenEBSNamespace()).
+		bdcObj, err := blockdeviceclaim.NewKubeClient().WithNamespace(env.GetOpenEBSNamespace()).
 			Get(bdcName, metav1.GetOptions{})
 		if err != nil {
 			return errors.Wrapf(err, "failed to get bdc %v", bdcName)
@@ -57,7 +58,7 @@ func addLocalPVFinalizerOnAssociatedBDCs(kubeClient *clientset.Clientset) error 
 		}
 
 		// Add finalizer on associated BDC
-		_, err = blockdeviceclaim.BuilderForAPIObject(bdcObj).BDC.AddFinalizer(LocalPVFinalizer)
+		_, err = blockdeviceclaim.BuilderForAPIObject(bdcObj).BDC.AddFinalizer(t.LocalPVFinalizer)
 		if err != nil {
 			return errors.Wrapf(err, "failed to add localpv finalizer on BDC %v",
 				bdcObj.Name)
