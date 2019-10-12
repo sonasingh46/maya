@@ -18,7 +18,7 @@ package app
 
 import (
 	"fmt"
-
+	new2 "github.com/openebs/maya/cmd/cspc-operator/app/new"
 	bdc "github.com/openebs/maya/pkg/blockdeviceclaim/v1alpha1"
 	apiscspc "github.com/openebs/maya/pkg/cstor/poolcluster/v1alpha1"
 	"github.com/openebs/maya/pkg/version"
@@ -98,6 +98,14 @@ func (c *Controller) syncHandler(key string) error {
 	return err
 }
 
+
+
+
+
+
+
+
+
 // enqueueCSPC takes a CSPC resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than CSPC.
@@ -110,6 +118,77 @@ func (c *Controller) enqueueCSPC(cspc interface{}) {
 	}
 	c.workqueue.Add(key)
 }
+
+type CSPIWorkerConfig struct {
+	CSPC apis.CStorPoolCluster
+}
+
+func (pi *CSPIWorkerConfig)Get() error {
+	fmt.Println("Not Implemented")
+	return nil
+}
+
+
+func (pi *CSPIWorkerConfig)Create() error {
+	fmt.Println("Not Implemented")
+	return nil
+}
+
+func (pi *CSPIWorkerConfig)Delete() error {
+	fmt.Println("Not Implemented")
+	return nil
+}
+
+func (pi *CSPIWorkerConfig)IsPendingForCreation() bool  {
+	fmt.Println("Not Implemented")
+	return false
+}
+
+type PoolDeployWorkerConfig struct {
+	CSPC apis.CStorPoolCluster
+}
+
+func (pi *PoolDeployWorkerConfig)Get() error {
+	fmt.Println("Not Implemented")
+	return nil
+}
+
+func (pi *PoolDeployWorkerConfig)Create() error {
+	fmt.Println("Not Implemented")
+	return nil
+}
+
+func (pi *PoolDeployWorkerConfig)Delete() error {
+	fmt.Println("Not Implemented")
+	return nil
+}
+
+
+type CStorPool struct {
+	Instance new2.PoolInstanceWorker
+	Deployement new2.PoolDeploymentWorker
+}
+
+func (c  *Controller)syncCSPCNew(CStorPool CStorPool)  {
+
+	// Namespace should be taken from CSPC
+
+	// Populate CSPC with the OpenEBS version
+
+	if CStorPool.Instance.IsPendingForCreation(){
+		CStorPool.Instance.Create()
+	}
+
+	if CStorPool.Deployement.IsPendingForCreation(){
+		CStorPool.Deployement.Create()
+	}
+
+
+}
+
+
+
+
 
 // synSpc is the function which tries to converge to a desired state for the cspc.
 func (c *Controller) syncCSPC(cspcGot *apis.CStorPoolCluster) error {
