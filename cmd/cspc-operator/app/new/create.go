@@ -1,12 +1,17 @@
 package new
 
+import (
+	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+
+)
 
 type PoolInstanceSpecGetter interface {
-	Get() error
+	Get() (*apis.CStorPoolInstance, error)
 }
 
 type PoolInstanceCreator interface {
-	Create() error
+	Create() (*apis.CStorPoolInstance, error)
 }
 
 type PoolInstanceDeleter interface {
@@ -28,7 +33,7 @@ type PoolDeploymentWorker interface {
 }
 
 type PoolDeploymentCreator interface {
-	Create() error
+	Create() (*appsv1.Deployment,error)
 }
 
 type PoolDeploymentDeleter interface {
@@ -36,6 +41,5 @@ type PoolDeploymentDeleter interface {
 }
 
 type PoolDeploymentSpecGetter interface {
-	Get() error
+	Get() (*appsv1.Deployment,error)
 }
-
