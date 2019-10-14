@@ -23,6 +23,7 @@ import (
 	"k8s.io/klog"
 )
 
+// TODO : Move in app directory.
 func main() {
 	if err := app.Start(); err != nil {
 		klog.Errorf("Failed to start the controller:{%s}", err.Error())

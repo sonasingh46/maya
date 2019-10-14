@@ -30,6 +30,10 @@ const (
 	CasTypeCStor = "cstor"
 )
 
+func (ac *Config) GetPoolInstanceSpec() (*apis.CStorPoolInstance, error) {
+	return ac.GetCSPSpec()
+}
+
 // GetCSPSpec returns a CSPI spec that should be created and claims all the
 // block device present in the CSPI spec
 func (ac *Config) GetCSPSpec() (*apis.CStorPoolInstance, error) {

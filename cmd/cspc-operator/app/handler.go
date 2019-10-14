@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The OpenEBS Authors
+Copyright 2019 The OpenEBS Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,45 +18,19 @@ package app
 
 import (
 	"fmt"
-	new2 "github.com/openebs/maya/cmd/cspc-operator/app/new"
-	"time"
-
-	apiscsp "github.com/openebs/maya/pkg/cstor/poolinstance/v1alpha3"
-
+	"github.com/openebs/maya/cmd/cspc-operator/pkg/pooldeployment"
+	"github.com/openebs/maya/cmd/cspc-operator/pkg/poolinstance"
+	pool "github.com/openebs/maya/cmd/cspc-operator/pkg/poolprovisioner"
+	deploymentprovisioner "github.com/openebs/maya/cmd/cspc-operator/pkg/poolprovisioner/deployment-provisioner"
 	nodeselect "github.com/openebs/maya/pkg/algorithm/nodeselect/v1alpha2"
 	apis "github.com/openebs/maya/pkg/apis/openebs.io/v1alpha1"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	appsv1 "k8s.io/api/apps/v1"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
+	"time"
 )
-
-//type clientSet struct {
-//	oecs openebs.Interface
-//}
-
-// PoolConfig embeds nodeselect config from algorithm package and Controller object.
-type PoolConfig struct {
-	AlgorithmConfig *nodeselect.Config
-	Controller      *Controller
-}
-
-// NewPoolConfig returns a poolconfig object
-func (c *Controller) NewPoolConfig(cspc *apis.CStorPoolCluster, namespace string) (*PoolConfig, error) {
-	pc, err := nodeselect.
-		NewBuilder().
-		WithCSPC(cspc).
-		WithNameSpace(namespace).
-		Build()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get algorithm config for provisioning")
-	}
-	return &PoolConfig{AlgorithmConfig: pc, Controller: c}, nil
-
-}
 
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the cspcPoolUpdated resource
@@ -88,12 +62,11 @@ func (c *Controller) syncHandler(key string) error {
 	// Deep-copy otherwise we are mutating our cache.
 	// TODO: Deep-copy only when needed.
 	cspcGot := cspc.DeepCopy()
-	//err = c.syncCSPC(cspcGot)
-	CStor, err := NewCStorPool(cspcGot)
+	CStorPool, err := NewCStorPoolProvisioner(cspcGot)
 	if err != nil {
 		return err
 	}
-	err = c.syncCSPCNew(CStor)
+	err = CStorPool.syncCSPC(cspcGot)
 	return err
 }
 
@@ -110,79 +83,12 @@ func (c *Controller) enqueueCSPC(cspc interface{}) {
 	c.workqueue.Add(key)
 }
 
-type CSPCConfig struct {
-	CSPC *apis.CStorPoolCluster
+type CStorProvisioner struct {
+	Pool           pool.Provisioner
+	PoolDeployment deploymentprovisioner.Provisioner
 }
 
-type CSPIWorkerConfig struct {
-	Config          *CSPCConfig
-	AlgorithmConfig *nodeselect.Config
-}
-
-type PoolDeployWorkerConfig struct {
-	Config *CSPCConfig
-}
-
-func (pi *CSPIWorkerConfig) Get() (*apis.CStorPoolInstance, error) {
-	CSPI, err := pi.AlgorithmConfig.GetCSPSpec()
-	if err != nil {
-		return nil, err
-	}
-	return CSPI, nil
-}
-
-func (pi *CSPIWorkerConfig) Create() (*apis.CStorPoolInstance, error) {
-	CSPI, err := pi.Get()
-	if err != nil {
-		return nil, err
-	}
-	gotCSPI, err := apiscsp.NewKubeClient().WithNamespace(pi.AlgorithmConfig.Namespace).Create(CSPI)
-	if err != nil {
-		return nil, err
-	}
-	return gotCSPI, err
-}
-
-func (pi *CSPIWorkerConfig) Delete() error {
-	fmt.Println("Not Implemented")
-	return nil
-}
-
-func (pi *CSPIWorkerConfig) IsPendingForCreation() bool {
-	pendingPoolCount, err := pi.AlgorithmConfig.GetPendingPoolCount()
-	if err != nil {
-		klog.Error("Error in getting pending pool count:",err)
-		return false
-	}
-	return (pendingPoolCount > 0)
-}
-
-func (pi *PoolDeployWorkerConfig) Get() (*appsv1.Deployment,error) {
-	fmt.Println("Not Implemented")
-	return nil,nil
-}
-
-func (pi *PoolDeployWorkerConfig) Create() (*appsv1.Deployment,error) {
-	fmt.Println("Not Implemented")
-	return nil,nil
-}
-
-func (pi *PoolDeployWorkerConfig) Delete() error {
-	fmt.Println("Not Implemented")
-	return nil
-}
-
-func (pi *PoolDeployWorkerConfig) IsPendingForCreation() bool {
-	fmt.Println("Not Implemented IsPendingForCreation for PoolDeployWorkerConfig")
-	return false
-}
-
-type CStorPool struct {
-	Instance   new2.PoolInstanceWorker
-	Deployment new2.PoolDeploymentWorker
-}
-
-func NewCStorPool(CSPC *apis.CStorPoolCluster) (*CStorPool, error) {
+func NewCStorPoolProvisioner(CSPC *apis.CStorPoolCluster) (*CStorProvisioner, error) {
 	ac, err := nodeselect.
 		NewBuilder().
 		WithCSPC(CSPC).
@@ -191,350 +97,34 @@ func NewCStorPool(CSPC *apis.CStorPoolCluster) (*CStorPool, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get algorithm config for provisioning")
 	}
-	return &CStorPool{
-		Instance: &CSPIWorkerConfig{
-			Config:          &CSPCConfig{CSPC: CSPC},
+	return &CStorProvisioner{
+		Pool: &poolinstance.Config{
+			PoolInstance:    poolinstance.NewPoolInstanceController(CSPC),
 			AlgorithmConfig: ac,
 		},
-		Deployment: &PoolDeployWorkerConfig{
-			Config: &CSPCConfig{CSPC: CSPC},
-		},
+		PoolDeployment: pooldeployment.NewConfig(CSPC),
 	}, nil
 }
-func (c *Controller) syncCSPCNew(CStorPool *CStorPool) error {
-	CSPCConfig, ok := CStorPool.Instance.(*CSPIWorkerConfig)
 
-	if !ok {
-		return errors.New("Could not type assert CSPC config")
+func (CStor *CStorProvisioner) syncCSPC(cspc *apis.CStorPoolCluster) error {
+	if cspc.DeletionTimestamp.IsZero() {
+		err := CStor.Pool.DeleteAll()
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
-	if CSPCConfig.Config.CSPC.DeletionTimestamp.IsZero() {
-		// Handle Deletion
-	}
-	for CStorPool.Instance.IsPendingForCreation() {
-		_, err := CStorPool.Instance.Create()
+	for CStor.Pool.IsPendingForCreation() {
+		_, err := CStor.Pool.Provision()
 		if err != nil {
 			return err
 		}
 	}
 
-	//if CStorPool.Deployement.IsPendingForCreation(){
-	//	err:=CStorPool.Deployement.Create()
-	//	if err!=nil{
-	//		return err
-	//	}
-	//}
-
-	return nil
-}
-
-//// synSpc is the function which tries to converge to a desired state for the cspc.
-//func (c *Controller) syncCSPC(cspcGot *apis.CStorPoolCluster) error {
-//
-//	openebsNameSpace := env.Get(env.OpenEBSNamespace)
-//	if openebsNameSpace == "" {
-//		message := fmt.Sprint("Could not sync CSPC: got empty namespace for openebs from env variable")
-//		c.recorder.Event(cspcGot, corev1.EventTypeWarning, "Getting Namespace", message)
-//		klog.Errorf("Could not sync CSPC {%s}: got empty namespace for openebs from env variable", cspcGot.Name)
-//		return nil
-//	}
-//
-//	// Not implemented
-//	cspcGot, err := c.populateVersion(cspcGot)
-//	if err != nil {
-//		klog.Errorf("failed to add versionDetails to CSPC %s:%s", cspcGot.Name, err.Error())
-//		return nil
-//	}
-//
-//	pc, err := c.NewPoolConfig(cspcGot, openebsNameSpace)
-//	if err != nil {
-//		message := fmt.Sprintf("Could not sync CSPC : failed to get pool config: {%s}", err.Error())
-//		c.recorder.Event(cspcGot, corev1.EventTypeWarning, "Creating Pool Config", message)
-//		klog.Errorf("Could not sync CSPC {%s}: failed to get pool config: {%s}", cspcGot.Name, err.Error())
-//		return nil
-//	}
-//
-//	// If CSPC is deleted -- handle the deletion.
-//	if !cspcGot.DeletionTimestamp.IsZero() {
-//		err = pc.handleCSPCDeletion()
-//		if err != nil {
-//			klog.Errorf("Failed to sync CSPC for deletion:%s", err.Error())
-//		}
-//		return nil
-//	}
-//
-//	cspcBuilderObj, err := apiscspc.BuilderForAPIObject(cspcGot).Build()
-//	if err != nil {
-//		klog.Errorf("Failed to build CSPC api object %s", cspcGot.Name)
-//		return nil
-//	}
-//
-//	cspc, err := cspcBuilderObj.AddFinalizer(apiscspc.CSPCFinalizer)
-//	if err != nil {
-//		klog.Errorf("Failed to add finalizer on CSPC %s:%s", cspcGot.Name, err.Error())
-//		return nil
-//	}
-//
-//	pendingPoolCount, err := pc.AlgorithmConfig.GetPendingPoolCount()
-//	if err != nil {
-//		message := fmt.Sprintf("Could not sync CSPC : failed to get pending pool count: {%s}", err.Error())
-//		c.recorder.Event(cspc, corev1.EventTypeWarning, "Getting Pending Pool(s) ", message)
-//		klog.Errorf("Could not sync CSPC {%s}: failed to get pending pool count:{%s}", cspc.Name, err.Error())
-//		return nil
-//	}
-//
-//	if pendingPoolCount < 0 {
-//		err = pc.DownScalePool()
-//		if err != nil {
-//			message := fmt.Sprintf("Could not downscale pool: %s", err.Error())
-//			c.recorder.Event(cspc, corev1.EventTypeWarning, "PoolDownScale", message)
-//			klog.Errorf("Could not downscale pool for CSPC %s: %s", cspc.Name, err.Error())
-//			return nil
-//		}
-//	}
-//
-//	if pendingPoolCount > 0 {
-//		err = pc.create(pendingPoolCount, cspc)
-//		if err != nil {
-//			message := fmt.Sprintf("Could not create pool(s) for CSPC: %s", err.Error())
-//			c.recorder.Event(cspc, corev1.EventTypeWarning, "Pool Create", message)
-//			klog.Errorf("Could not create pool(s) for CSPC {%s}:{%s}", cspc.Name, err.Error())
-//			return nil
-//		}
-//	}
-//
-//	cspList, err := pc.AlgorithmConfig.GetCSPIWithoutDeployment()
-//	if err != nil {
-//		// Note: CSP for which pool deployment does not exists are known as orphaned.
-//		message := fmt.Sprintf("Error in getting orphaned CSP :{%s}", err.Error())
-//		c.recorder.Event(cspc, corev1.EventTypeWarning, "Pool Create", message)
-//		klog.Errorf("Error in getting orphaned CSP for CSPC {%s}:{%s}", cspc.Name, err.Error())
-//		return nil
-//	}
-//
-//	if len(cspList) > 0 {
-//		pc.createDeployForCSPList(cspList)
-//	}
-//
-//	if pendingPoolCount == 0 {
-//		klog.V(2).Infof("Handling pool operations for CSPC %s if any", cspc.Name)
-//		pc.handleOperations()
-//	}
-//
-//	return nil
-//}
-//
-//// create is a wrapper function that calls the actual function to create pool as many time
-//// as the number of pools need to be created.
-//func (pc *PoolConfig) create(pendingPoolCount int, cspc *apis.CStorPoolCluster) error {
-//	newSpcLease := &Lease{cspc, CSPCLeaseKey, pc.Controller.clientset, pc.Controller.kubeclientset}
-//	err := newSpcLease.Hold()
-//	if err != nil {
-//		return errors.Wrapf(err, "Could not acquire lease on cspc object")
-//	}
-//	klog.V(4).Infof("Lease acquired successfully on cstorpoolcluster %s ", cspc.Name)
-//	for poolCount := 1; poolCount <= pendingPoolCount; poolCount++ {
-//		err = pc.CreateStoragePool()
-//		if err != nil {
-//			message := fmt.Sprintf("Pool provisioning failed for %d/%d ", poolCount, pendingPoolCount)
-//			pc.Controller.recorder.Event(cspc, corev1.EventTypeWarning, "Create", message)
-//			runtime.HandleError(errors.Wrapf(err, "Pool provisioning failed for %d/%d for cstorpoolcluster %s", poolCount, pendingPoolCount, cspc.Name))
-//		} else {
-//			message := fmt.Sprintf("Pool Provisioned %d/%d ", poolCount, pendingPoolCount)
-//			pc.Controller.recorder.Event(cspc, corev1.EventTypeNormal, "Create", message)
-//			klog.Infof("Pool provisioned successfully %d/%d for cstorpoolcluster %s", poolCount, pendingPoolCount, cspc.Name)
-//		}
-//	}
-//	return nil
-//}
-//
-func (pc *PoolConfig) createDeployForCSPList(cspList []apis.CStorPoolInstance) {
-	for _, cspObj := range cspList {
-		cspObj := cspObj
-		err := pc.createDeployForCSP(&cspObj)
-		if err != nil {
-			message := fmt.Sprintf("Failed to create pool deployment for CSP %s: %s", cspObj.Name, err.Error())
-			pc.Controller.recorder.Event(pc.AlgorithmConfig.CSPC, corev1.EventTypeWarning, "PoolDeploymentCreate", message)
-			runtime.HandleError(errors.Errorf("Failed to create pool deployment for CSP %s: %s", cspObj.Name, err.Error()))
-		}
-	}
-}
-
-func (pc *PoolConfig) createDeployForCSP(csp *apis.CStorPoolInstance) error {
-	deployObj, err := pc.GetPoolDeploySpec(csp)
+	err := CStor.PoolDeployment.Sync()
 	if err != nil {
-		return errors.Wrapf(err, "could not get deployment spec for csp {%s}", csp.Name)
-	}
-	err = pc.createPoolDeployment(deployObj)
-	if err != nil {
-		return errors.Wrapf(err, "could not create deployment for csp {%s}", csp.Name)
+		return err
 	}
 	return nil
 }
-
-//
-//// handleCSPCDeletion handles deletion of a CSPC resource by deleting
-//// the associated CSP resource to it, removing the CSPC finalizer
-//// on BDC(s) used and then removing the CSPC finalizer on CSPC resource
-//// itself.
-//
-//// It is necessary that CSPC resource has the CSPC finalizer on it in order to
-//// execute the handler.
-//func (pc *PoolConfig) handleCSPCDeletion() error {
-//	err := pc.deleteAssociatedCSPI()
-//
-//	if err != nil {
-//		return errors.Wrapf(err, "failed to handle CSPC deletion")
-//	}
-//
-//	cspcBuilderObj, err := apiscspc.BuilderForAPIObject(pc.AlgorithmConfig.CSPC).Build()
-//	if err != nil {
-//		klog.Errorf("Failed to build CSPC api object %s:%s", pc.AlgorithmConfig.CSPC.Name, err.Error())
-//		return nil
-//	}
-//
-//	if cspcBuilderObj.HasFinalizer(apiscspc.CSPCFinalizer) {
-//		err := pc.removeCSPCFinalizer()
-//		if err != nil {
-//			return errors.Wrapf(err, "failed to handle CSPC %s deletion", pc.AlgorithmConfig.CSPC.Name)
-//		}
-//	}
-//
-//	return nil
-//}
-//
-//// deleteAssociatedCSPI deletes the CSPI resource(s) belonging to the given CSPC resource.
-//// If no CSPI resource exists for the CSPC, then a levelled info log is logged and function
-//// returns.
-//func (pc *PoolConfig) deleteAssociatedCSPI() error {
-//	err := apiscsp.NewKubeClient().WithNamespace(pc.AlgorithmConfig.Namespace).DeleteCollection(
-//		metav1.ListOptions{
-//			LabelSelector: string(apis.CStorPoolClusterCPK) + "=" + pc.AlgorithmConfig.CSPC.Name,
-//		},
-//		&metav1.DeleteOptions{},
-//	)
-//
-//	if k8serror.IsNotFound(err) {
-//		klog.V(2).Infof("Associated CSPI(s) of CSPC %s is already deleted:%s", pc.AlgorithmConfig.CSPC.Name, err.Error())
-//		return nil
-//	}
-//
-//	if err != nil {
-//		return errors.Wrapf(err, "failed to delete associated CSPI(s):%s", err.Error())
-//	}
-//	klog.Infof("Associated CSPI(s) of CSPC %s deleted successfully ", pc.AlgorithmConfig.CSPC.Name)
-//	return nil
-//}
-//
-//// removeSPCFinalizer removes CSPC finalizers on associated
-//// BDC resources and CSPC object itself.
-//func (pc *PoolConfig) removeCSPCFinalizer() error {
-//	cspList, err := apiscsp.NewKubeClient().List(metav1.ListOptions{
-//		LabelSelector: string(apis.StoragePoolClaimCPK) + "=" + pc.AlgorithmConfig.CSPC.Name,
-//	})
-//
-//	if err != nil {
-//		return errors.Wrap(err, "failed to remove CSPC finalizer on associated resources")
-//	}
-//
-//	if len(cspList.Items) > 0 {
-//		return errors.Wrap(err, "failed to remove CSPC finalizer on associated resources as "+
-//			"CSPI(s) still exists for CSPC")
-//	}
-//
-//	err = pc.removeSPCFinalizerOnAssociatedBDC()
-//
-//	if err != nil {
-//		return errors.Wrap(err, "failed to remove CSPC finalizer on associated resources")
-//	}
-//
-//	cspcBuilderObj, err := apiscspc.BuilderForAPIObject(pc.AlgorithmConfig.CSPC).Build()
-//	if err != nil {
-//		klog.Errorf("Failed to build CSPC api object %s", pc.AlgorithmConfig.CSPC.Name)
-//		return nil
-//	}
-//
-//	err = cspcBuilderObj.RemoveFinalizer(apiscspc.CSPCFinalizer)
-//
-//	if err != nil {
-//		return errors.Wrap(err, "failed to remove CSPC finalizer on associated resources")
-//	}
-//	return nil
-//}
-//
-//// removeSPCFinalizerOnAssociatedBDC removes CSPC finalizer on associated BDC resource(s)
-//func (pc *PoolConfig) removeSPCFinalizerOnAssociatedBDC() error {
-//	bdcList, err := bdc.NewKubeClient().WithNamespace(pc.AlgorithmConfig.Namespace).List(
-//		metav1.ListOptions{
-//			LabelSelector: string(apis.CStorPoolClusterCPK) + "=" + pc.AlgorithmConfig.CSPC.Name,
-//		})
-//
-//	if err != nil {
-//		return errors.Wrapf(err, "failed to remove CSPC finalizer on BDC resources")
-//	}
-//
-//	for _, bdcObj := range bdcList.Items {
-//		bdcObj := bdcObj
-//		err := bdc.BuilderForAPIObject(&bdcObj).BDC.RemoveFinalizer(apiscspc.CSPCFinalizer)
-//		if err != nil {
-//			return errors.Wrapf(err, "failed to remove CSPC finalizer on BDC %s", bdcObj.Name)
-//		}
-//	}
-//
-//	return nil
-//}
-//
-//// populateVersion assigns VersionDetails for old cspc object and newly created
-//// cspc
-//func (c *Controller) populateVersion(cspc *apis.CStorPoolCluster) (*apis.CStorPoolCluster, error) {
-//	if cspc.VersionDetails.Status.Current == "" {
-//		var err error
-//		var v string
-//		var obj *apis.CStorPoolCluster
-//		v, err = c.EstimateCSPCVersion(cspc)
-//		if err != nil {
-//			return nil, err
-//		}
-//		cspc.VersionDetails.Status.Current = v
-//		// For newly created spc Desired field will also be empty.
-//		cspc.VersionDetails.Desired = v
-//		cspc.VersionDetails.Status.DependentsUpgraded = true
-//		obj, err = c.clientset.OpenebsV1alpha1().
-//			CStorPoolClusters(env.Get(env.OpenEBSNamespace)).
-//			Update(cspc)
-//
-//		if err != nil {
-//			return nil, errors.Wrapf(
-//				err,
-//				"failed to update spc %s while adding versiondetails",
-//				cspc.Name,
-//			)
-//		}
-//		klog.Infof("Version %s added on spc %s", v, cspc.Name)
-//		return obj, nil
-//	}
-//	return cspc, nil
-//}
-//
-//// EstimateCSPCVersion returns the cspi version if any cspi is present for the cspc or
-//// returns the maya version as the new cspi created will be of maya version
-//func (c *Controller) EstimateCSPCVersion(cspc *apis.CStorPoolCluster) (string, error) {
-//
-//	cspiList, err := c.clientset.OpenebsV1alpha1().
-//		CStorPoolInstances(env.Get(env.OpenEBSNamespace)).
-//		List(
-//			metav1.ListOptions{
-//				LabelSelector: string(apis.CStorPoolClusterCPK) + "=" + cspc.Name,
-//			})
-//	if err != nil {
-//		return "", errors.Wrapf(
-//			err,
-//			"failed to get the cstorpool instance list related to cspc : %s",
-//			cspc.Name,
-//		)
-//	}
-//	if len(cspiList.Items) == 0 {
-//		return version.Current(), nil
-//	}
-//	return cspiList.Items[0].Labels[string(apis.OpenEBSVersionKey)], nil
-//}
